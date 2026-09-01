@@ -13,6 +13,19 @@ let toastTimer
 const $ = selector => document.querySelector(selector)
 const $$ = selector => [...document.querySelectorAll(selector)]
 const taskRules = new Map(TASK_RULES.map(rule => [rule.id, rule]))
+const taskIcons = {
+  find_person: '🧭',
+  equipment_60: '🗡️',
+  furniture_1: '🪑',
+  medicine: '🧪',
+  cooking: '🍲',
+  equipment_70: '⚔️',
+  instrument: '🎵',
+  flower: '🌸',
+  equipment_80: '🛡️',
+  furniture_2: '🏮',
+  mutant_specific: '🐾',
+}
 
 const rewardPriceDefinitions = [
   ...['book', 'iron'].flatMap(type => [90, 100, 110, 120, 130, 140, 150].map(level => ({ key: rewardPriceKey(type, level), label: `${level}级${type === 'book' ? '书' : '铁'}` }))),
@@ -92,7 +105,8 @@ function applyTheme(theme) {
 function renderTaskButtons() {
   $('#task-grid').innerHTML = TASK_RULES.map(rule => `
     <button type="button" class="task-option${rule.id === selectedTask ? ' is-selected' : ''}" data-task="${rule.id}" aria-pressed="${rule.id === selectedTask}">
-      ${rule.name}<span>${formatSigned(rule.score)} 分</span>
+      <span class="task-icon" aria-hidden="true">${taskIcons[rule.id] || '📦'}</span>
+      <span class="task-copy"><strong>${rule.name}</strong><small>${formatSigned(rule.score)} 分</small></span>
     </button>`).join('')
   $('#task-grid').addEventListener('click', event => {
     const button = event.target.closest('[data-task]')
