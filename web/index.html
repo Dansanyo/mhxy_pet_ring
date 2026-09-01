@@ -27,30 +27,6 @@
     <section id="page-current" class="page is-active" aria-labelledby="current-heading">
       <div class="current-layout">
         <div class="current-primary">
-      <div class="page-heading">
-        <div><p class="eyebrow">当前统计</p><h2 id="current-heading"><span id="current-ring">0</span><small>/100 环</small></h2></div>
-        <div class="progress-copy"><span id="progress-percent">0%</span><div class="progress"><span id="progress-bar"></span></div></div>
-      </div>
-
-      <div class="stat-grid" aria-live="polite">
-        <article class="stat stat-primary"><span>当前积分</span><strong id="current-score">0</strong></article>
-        <article class="stat"><span>当前成本</span><strong id="current-cost">0.0万</strong></article>
-        <article class="stat"><span>平均每环</span><strong id="average-score">—</strong></article>
-        <article class="stat"><span>预计总分</span><strong id="expected-score">—</strong></article>
-        <article class="stat"><span>预计总成本</span><strong id="expected-cost">—</strong></article>
-        <article class="stat"><span>预计净收益</span><strong id="expected-profit">样本不足</strong></article>
-      </div>
-
-      <details class="panel setup-panel">
-        <summary>起始数据与人物等级</summary>
-        <div class="field-grid">
-          <label>人物等级<input id="player-level" type="number" min="1" max="200" inputmode="numeric"></label>
-          <label>已有环数<input id="initial-ring" type="number" min="0" max="99" inputmode="numeric"></label>
-          <label>已有积分<input id="initial-score" type="number" min="-1000" max="2000" inputmode="numeric"></label>
-          <label>已有成本（万）<input id="initial-cost" type="number" min="0" step="0.1" inputmode="decimal"></label>
-        </div>
-      </details>
-
       <section class="panel record-panel" aria-labelledby="record-heading">
         <div class="panel-title"><div><p class="eyebrow">记录本环</p><h3 id="record-heading">第 <span id="next-ring">1</span> 环</h3></div><output id="calculated-score" class="score-chip">+1 分</output></div>
         <div id="task-grid" class="task-grid" role="group" aria-label="任务类型"></div>
@@ -70,6 +46,32 @@
         </div>
 
         <div class="current-secondary">
+      <div class="current-summary">
+        <div class="page-heading">
+          <div><p class="eyebrow">当前统计</p><h2 id="current-heading"><span id="current-ring">0</span><small>/100 环</small></h2></div>
+          <div class="progress-copy"><span id="progress-percent">0%</span><div class="progress"><span id="progress-bar"></span></div></div>
+        </div>
+
+        <div class="stat-grid" aria-live="polite">
+          <article class="stat stat-primary"><span>当前积分</span><strong id="current-score">0</strong></article>
+          <article class="stat"><span>当前成本</span><strong id="current-cost">0.0万</strong></article>
+          <article class="stat"><span>平均每环</span><strong id="average-score">—</strong></article>
+          <article class="stat"><span>预计总分</span><strong id="expected-score">—</strong></article>
+          <article class="stat"><span>预计总成本</span><strong id="expected-cost">—</strong></article>
+          <article class="stat"><span>预计净收益</span><strong id="expected-profit">样本不足</strong></article>
+        </div>
+
+        <details class="panel setup-panel">
+          <summary>起始数据与人物等级</summary>
+          <div class="field-grid">
+            <label>人物等级<input id="player-level" type="number" min="1" max="200" inputmode="numeric"></label>
+            <label>已有环数<input id="initial-ring" type="number" min="0" max="99" inputmode="numeric"></label>
+            <label>已有积分<input id="initial-score" type="number" min="-1000" max="2000" inputmode="numeric"></label>
+            <label>已有成本（万）<input id="initial-cost" type="number" min="0" step="0.1" inputmode="decimal"></label>
+          </div>
+        </details>
+      </div>
+
       <section class="panel prediction-panel" aria-labelledby="prediction-heading">
         <div class="panel-title"><div><p class="eyebrow">概率预测</p><h3 id="prediction-heading">奖励档位</h3></div><span id="confidence-label" class="confidence">早期估算</span></div>
         <p id="score-range" class="range-copy">完成若干环后开始预测</p>

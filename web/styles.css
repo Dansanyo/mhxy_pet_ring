@@ -34,6 +34,8 @@ main { max-width: 1200px; margin: 0 auto; padding: 0 20px 64px; }
 .page.is-active { display: grid; gap: 14px; }
 .current-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(340px, .75fr); align-items: start; gap: 16px; }
 .current-primary, .current-secondary { display: grid; gap: 14px; min-width: 0; }
+.current-summary { display: grid; gap: 14px; min-width: 0; }
+.current-secondary .setup-panel .field-grid { grid-template-columns: 1fr 1fr; }
 .page-heading, .section-heading, .panel-title { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .page-heading h2, .section-heading h2 { font-size: 34px; margin: 0; }
 .page-heading h2 small { color: var(--muted); font-size: 16px; font-weight: 500; }
@@ -125,6 +127,12 @@ input:focus, select:focus, button:focus-visible { outline: 3px solid rgba(239, 9
 }
 @media (max-width: 900px) {
   .current-layout { grid-template-columns: 1fr; }
+  .current-primary, .current-secondary { display: contents; }
+  .current-summary { order: 1; }
+  .record-panel { order: 2; }
+  .prediction-panel { order: 3; }
+  .entries-panel { order: 4; }
+  .cycle-actions { order: 5; }
 }
 @media (max-width: 390px) {
   .task-grid { grid-template-columns: 1fr 1fr; }
