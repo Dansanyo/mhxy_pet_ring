@@ -29,7 +29,7 @@ func TestServesEmbeddedHomePage(t *testing.T) {
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d", response.Code)
 	}
-	if !strings.Contains(response.Body.String(), "宠环决策助手") {
+	if !strings.Contains(response.Body.String(), "宠环助手") {
 		t.Fatalf("home page missing title: %s", response.Body.String())
 	}
 }
@@ -52,7 +52,7 @@ func TestFrontendRouteFallsBackToHomePage(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/history", nil)
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
-	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "宠环决策助手") {
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "宠环助手") {
 		t.Fatalf("frontend fallback status/body = %d/%s", response.Code, response.Body.String())
 	}
 }
