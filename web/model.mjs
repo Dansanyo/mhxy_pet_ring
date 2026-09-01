@@ -21,6 +21,9 @@ export const TASK_RESOLUTIONS = Object.freeze({
 })
 
 export const MIN_SIMULATION_SAMPLES = 200
+export const MIN_PREDICTION_RINGS = 10
+export const MIN_BUCKET_SAMPLES = 20
+const PRIOR_SAMPLE_WEIGHT = 30
 
 const taskByID = new Map(TASK_RULES.map(rule => [rule.id, rule]))
 
@@ -116,6 +119,10 @@ export function fallbackProjection({ currentRing, currentScore, currentCost, pla
 export function simulateProjection(input) {
   const taskBuckets = Array.isArray(input.taskBuckets) ? input.taskBuckets : []
   const sampleCount = taskBuckets.reduce((sum, row) => sum + positiveCount(row.count), 0)
+  const currentRing = clamp(Math.trunc(input.currentRing || 0), 0, 100)
+  if (currentRing < MIN_PREDICTION_RINGS) {
+    return unavailableProjection(sampleCount)
+  }
   if (sampleCount < MIN_SIMULATION_SAMPLES) {
     return { ...fallbackProjection(input), sampleCount }
   }
@@ -136,19 +143,30 @@ export function simulateProjection(input) {
     score: Number(row.score) || 0,
     count: positiveCount(row.count),
   }))
+  const remainingBuckets = [...new Set(
+    Array.from({ length: 100 - currentRing }, (_, index) => Math.floor((currentRing + index) / 10) + 1),
+  )]
+  const covered = remainingBuckets.every(bucket =>
+    (grouped.get(bucket) || []).reduce((sum, row) => sum + row.count, 0) >= MIN_BUCKET_SAMPLES,
+  )
+  if (!covered) return { ...fallbackProjection(input), sampleCount }
+
+  const distributions = new Map(remainingBuckets.map(bucket => [
+    bucket,
+    smoothDistribution(grouped.get(bucket) || [], globalRows),
+  ]))
   const runs = Math.max(1, Math.trunc(input.runs || 3000))
   const random = input.random || Math.random
   const scores = []
   let costTotal = 0
   const tierHits = Object.fromEntries([90, 100, 110, 120, 130, 140, 150].map(tier => [tier, 0]))
-  const currentRing = clamp(Math.trunc(input.currentRing || 0), 0, 100)
 
   for (let run = 0; run < runs; run += 1) {
     let score = Number(input.currentScore) || 0
     let cost = Number(input.currentCost) || 0
     for (let ring = currentRing + 1; ring <= 100; ring += 1) {
       const bucket = Math.floor((ring - 1) / 10) + 1
-      const outcome = chooseWeighted(grouped.get(bucket) || globalRows, random)
+      const outcome = chooseWeighted(distributions.get(bucket) || globalRows, random)
       score += outcome.score
       cost += Number(input.prices?.[outcome.taskType]) || 0
     }
@@ -171,10 +189,41 @@ export function simulateProjection(input) {
     expectedCost: round(costTotal / runs, 1),
     expectedTier: rewardTier(input.playerLevel, expectedScore),
     tierProbabilities,
-    confidence: sampleCount >= 1000 ? 'high' : sampleCount >= 200 ? 'medium' : 'low',
+    confidence: sampleCount >= 1000 ? 'high' : 'medium',
     sampleCount,
     method: 'simulation',
   }
+}
+
+function unavailableProjection(sampleCount) {
+  return {
+    expectedScore: null,
+    p10Score: null,
+    p50Score: null,
+    p90Score: null,
+    expectedCost: null,
+    expectedTier: 0,
+    tierProbabilities: Object.fromEntries([90, 100, 110, 120, 130, 140, 150].map(tier => [tier, 0])),
+    confidence: 'low',
+    sampleCount,
+    method: 'insufficient',
+  }
+}
+
+function smoothDistribution(bucketRows, globalRows) {
+  const globalTotal = globalRows.reduce((sum, row) => sum + positiveCount(row.count), 0)
+  const outcomes = new Map()
+  for (const row of bucketRows) {
+    const key = `${row.taskType}:${row.score}`
+    outcomes.set(key, { ...row, count: positiveCount(row.count) })
+  }
+  for (const row of globalRows) {
+    const key = `${row.taskType}:${row.score}`
+    const current = outcomes.get(key) || { taskType: row.taskType, score: row.score, count: 0 }
+    current.count += globalTotal ? positiveCount(row.count) / globalTotal * PRIOR_SAMPLE_WEIGHT : 0
+    outcomes.set(key, current)
+  }
+  return [...outcomes.values()]
 }
 
 export function expectedRewardValue({ rewardBuckets, playerLevel, expectedScore, rewardPrices }) {
@@ -203,11 +252,11 @@ export function emptyEntryDraft() {
 }
 
 function chooseWeighted(rows, random) {
-  const total = rows.reduce((sum, row) => sum + positiveCount(row.count), 0)
+  const total = rows.reduce((sum, row) => sum + positiveWeight(row.count), 0)
   if (!total) return { taskType: 'find_person', score: 1, count: 1 }
   let target = Math.min(0.999999999, Math.max(0, random())) * total
   for (const row of rows) {
-    target -= positiveCount(row.count)
+    target -= positiveWeight(row.count)
     if (target < 0) return row
   }
   return rows[rows.length - 1]
@@ -219,6 +268,10 @@ function percentile(sorted, fraction) {
 
 function positiveCount(value) {
   return Math.max(0, Math.trunc(Number(value) || 0))
+}
+
+function positiveWeight(value) {
+  return Math.max(0, Number(value) || 0)
 }
 
 function nearestLevelBand(level) {

@@ -134,6 +134,28 @@ test('公共任务样本不足时仍按当前平均分外推', () => {
   assert.equal(result.tierProbabilities[150], 1)
 })
 
+test('不足10环时不输出伪精确预测', () => {
+  const result = simulateProjection({
+    currentRing: 9,
+    currentScore: 30,
+    playerLevel: 175,
+    taskBuckets: [{ bucket: 1, taskType: 'find_person', score: 1, count: 1000 }],
+  })
+  assert.equal(result.expectedScore, null)
+  assert.equal(result.method, 'insufficient')
+})
+
+test('总样本足够但剩余环段覆盖不足时回退到均分外推', () => {
+  const result = simulateProjection({
+    currentRing: 50,
+    currentScore: 100,
+    playerLevel: 175,
+    taskBuckets: [{ bucket: 10, taskType: 'find_person', score: 1, count: 200 }],
+  })
+  assert.equal(result.expectedScore, 200)
+  assert.equal(result.method, 'average')
+})
+
 test('固定任务分布可以预测剩余积分和本地价格成本', () => {
   const result = simulateProjection({
     currentRing: 98,

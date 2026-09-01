@@ -1,4 +1,4 @@
-import { TASK_RESOLUTIONS, TASK_RULES, canChooseResolution, emptyEntryDraft, expectedRewardValue, fallbackProjection, resolutionCostKey, resolutionsForTask, rewardPriceKey, scoreResolution, simulateProjection } from './model.mjs'
+import { TASK_RESOLUTIONS, TASK_RULES, canChooseResolution, emptyEntryDraft, expectedRewardValue, resolutionCostKey, resolutionsForTask, rewardPriceKey, scoreResolution, simulateProjection } from './model.mjs'
 import { createRepository } from './storage.mjs'
 
 const repository = createRepository(localStorage)
@@ -191,13 +191,13 @@ function render() {
     taskBuckets: publicModel.taskBuckets,
     prices: state.prices.tasks,
   }
-  const projection = publicModel.taskSamples ? simulateProjection(projectionInput) : fallbackProjection(projectionInput)
-  const rewardEstimate = expectedRewardValue({
+  const projection = simulateProjection(projectionInput)
+  const rewardEstimate = Number.isFinite(projection.expectedScore) ? expectedRewardValue({
     rewardBuckets: publicModel.rewardBuckets,
     playerLevel: state.playerLevel,
     expectedScore: projection.expectedScore,
     rewardPrices: state.prices.rewards,
-  })
+  }) : { value: null, sampleCount: 0 }
   const profit = rewardEstimate.value === null ? null : rewardEstimate.value - projection.expectedCost
 
   $('#current-ring').textContent = totals.ring
@@ -206,16 +206,16 @@ function render() {
   $('#current-score').textContent = totals.score
   $('#current-cost').textContent = formatMoney(totals.cost)
   $('#average-score').textContent = totals.ring ? (totals.score / totals.ring).toFixed(2) : '—'
-  $('#expected-score').textContent = totals.ring ? projection.expectedScore : '—'
-  $('#expected-cost').textContent = totals.ring ? formatMoney(projection.expectedCost) : '—'
+  $('#expected-score').textContent = Number.isFinite(projection.expectedScore) ? projection.expectedScore : '—'
+  $('#expected-cost').textContent = Number.isFinite(projection.expectedCost) ? formatMoney(projection.expectedCost) : '—'
   $('#expected-profit').textContent = profit === null ? '样本不足' : formatSignedMoney(profit)
   $('#expected-profit').style.color = profit !== null && profit < 0 ? 'var(--red)' : ''
   $('#next-ring').textContent = Math.min(100, totals.ring + 1)
   $('#complete-cycle').disabled = totals.ring < 100
   $('#add-entry').disabled = totals.ring >= 100
   $('#confidence-label').textContent = confidenceText(projection.confidence, projection.sampleCount)
-  $('#score-range').textContent = !totals.ring
-    ? '完成若干环后开始预测'
+  $('#score-range').textContent = projection.method === 'insufficient'
+    ? '完成至少 10 环后开始预测'
     : projection.method === 'average'
       ? `按当前平均每环外推，预计 ${projection.expectedScore} 分`
       : `预计 ${projection.expectedScore} 分，较可能落在 ${projection.p10Score}–${projection.p90Score} 分`
