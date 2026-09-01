@@ -41,7 +41,7 @@ test('添加和撤销单环记录会持久化', () => {
 test('可以删除指定的误录环并保留其他记录', () => {
   const repository = createRepository(new MemoryStorage(), { createID: () => 'device-id-123456' })
   repository.addEntry({ id: 'entry-1', ringNumber: 1, taskType: 'find_person', score: 1, cost: 0 })
-  repository.addEntry({ id: 'entry-2', ringNumber: 2, taskType: 'flower', score: 4, cost: 10 })
+  repository.addEntry({ id: 'entry-2', ringNumber: 2, taskType: 'flower_instrument', score: 4, cost: 10 })
   repository.deleteEntry('entry-1')
   assert.deepEqual(repository.load().current.entries.map(item => [item.id, item.ringNumber]), [['entry-2', 1]])
 })
@@ -63,10 +63,10 @@ test('完成周期保存历史并清空当前记录', () => {
 test('匿名选择和本地物价可修改', () => {
   const repository = createRepository(new MemoryStorage(), { createID: () => 'device-id-123456' })
   repository.setConsent(true)
-  repository.savePrices({ tasks: { flower: 12.5 }, rewards: { training_fruit: 80 } })
+  repository.savePrices({ tasks: { flower_instrument: 12.5 }, rewards: { training_fruit: 80 } })
   const state = repository.load()
   assert.equal(state.consent, true)
-  assert.equal(state.prices.tasks.flower, 12.5)
+  assert.equal(state.prices.tasks.flower_instrument, 12.5)
   assert.equal(state.prices.rewards.training_fruit, 80)
 })
 
@@ -98,4 +98,16 @@ test('旧版变异选项迁移为任务要求和处理方式', () => {
   const entry = repository.load().current.entries[0]
   assert.equal(entry.requestedTaskType, 'mutant_specific')
   assert.equal(entry.resolution, 'normal_pet')
+})
+
+test('旧版花和乐器记录及价格合并为花乐', () => {
+  const storage = new MemoryStorage()
+  const repository = createRepository(storage, { createID: () => 'device-id-123456' })
+  const state = repository.load()
+  state.current.entries.push({ id: 'legacy-flower', ringNumber: 1, taskType: 'flower', score: 4, cost: 8 })
+  state.prices.tasks = { flower: 8, instrument: 6 }
+  repository.save(state)
+  const migrated = repository.load()
+  assert.equal(migrated.current.entries[0].requestedTaskType, 'flower_instrument')
+  assert.deepEqual(migrated.prices.tasks, { flower_instrument: 8 })
 })

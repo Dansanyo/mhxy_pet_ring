@@ -147,7 +147,7 @@ function normalizeState(state) {
       entries: Array.isArray(item.entries) ? item.entries.map(normalizeEntry) : [],
     })) : [],
     prices: {
-      tasks: state.prices?.tasks || {},
+      tasks: normalizeTaskPrices(state.prices?.tasks || {}),
       rewards: state.prices?.rewards || {},
     },
     pendingEvents: Array.isArray(state.pendingEvents) ? state.pendingEvents.map(normalizePendingEvent) : [],
@@ -155,8 +155,9 @@ function normalizeState(state) {
 }
 
 function normalizeEntry(entry) {
+  const taskType = normalizeTaskType(entry.requestedTaskType || entry.taskType)
   if (entry.requestedTaskType) {
-    return { ...entry, resolution: entry.resolution || 'fulfilled' }
+    return { ...entry, requestedTaskType: taskType, resolution: entry.resolution || 'fulfilled' }
   }
   if (entry.taskType === 'mutant_unspecified') {
     return { ...entry, requestedTaskType: 'mutant_specific', resolution: 'mutant_unspecified' }
@@ -164,16 +165,30 @@ function normalizeEntry(entry) {
   if (entry.taskType === 'normal_pet_as_mutant') {
     return { ...entry, requestedTaskType: 'mutant_specific', resolution: 'normal_pet' }
   }
-  return { ...entry, requestedTaskType: entry.taskType, resolution: 'fulfilled' }
+  return { ...entry, requestedTaskType: taskType, resolution: entry.resolution || 'fulfilled' }
 }
 
 function normalizePendingEvent(event) {
-  if (event.kind !== 'task' || !event.body || event.body.resolution) return event
-  const entry = normalizeEntry({ taskType: event.body.taskType })
+  if (event.kind !== 'task' || !event.body) return event
+  const entry = normalizeEntry({ taskType: event.body.taskType, resolution: event.body.resolution })
   return {
     ...event,
     body: { ...event.body, taskType: entry.requestedTaskType, resolution: entry.resolution },
   }
+}
+
+function normalizeTaskType(taskType) {
+  return ['flower', 'instrument'].includes(taskType) ? 'flower_instrument' : taskType
+}
+
+function normalizeTaskPrices(prices) {
+  const result = { ...prices }
+  if (result.flower_instrument === undefined) {
+    result.flower_instrument = result.flower ?? result.instrument ?? 0
+  }
+  delete result.flower
+  delete result.instrument
+  return result
 }
 
 function defaultID() {

@@ -26,7 +26,7 @@ test('完成一环后清空品质并将本环成本归零', () => {
 })
 
 test('任务规则只包含系统要求，不混入玩家处理方式', () => {
-  assert.equal(TASK_RULES.length, 11)
+  assert.equal(TASK_RULES.length, 10)
   assert.equal(TASK_RULES.find(item => item.id === 'mutant_specific').score, 10)
   assert.equal(TASK_RULES.some(item => item.id === 'normal_pet_as_mutant'), false)
 })
@@ -42,8 +42,8 @@ test('指定变异任务提供四种处理方式', () => {
 })
 
 test('所有任务都可以跳过且不会把替代交付用于其他任务', () => {
-  assert.equal(scoreResolution('flower', 'skipped'), -20)
-  assert.throws(() => scoreResolution('flower', 'normal_pet'), /只适用于指定变异任务/)
+  assert.equal(scoreResolution('flower_instrument', 'skipped'), -20)
+  assert.throws(() => scoreResolution('flower_instrument', 'normal_pet'), /只适用于指定变异任务/)
 })
 
 test('当前积分不足20时不能跳过本环', () => {
@@ -77,9 +77,11 @@ test('没有奖励样本时不输出伪精确价值', () => {
   assert.deepEqual(expectedRewardValue({ rewardBuckets: [] }), { value: null, sampleCount: 0 })
 })
 
-test('三级药品质不足按差值的一半向下取整扣分', () => {
+test('三级药品质不足按差值扣分且允许负分', () => {
   assert.equal(scoreTask('medicine', 63, 58), 0)
   assert.equal(scoreTask('medicine', 70, 60), -3)
+  assert.equal(scoreTask('cooking', 1000, 0), -498)
+  assert.equal(scoreResolution('cooking', 'quality_below', 1000, 0), -498)
 })
 
 test('非品质任务返回基础积分', () => {

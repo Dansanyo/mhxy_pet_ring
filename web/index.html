@@ -40,11 +40,11 @@
         <div class="record-scroll">
         <div class="panel-title"><div><p class="eyebrow">记录本环</p><h3 id="record-heading">第 <span id="next-ring">1</span> 环</h3></div><output id="calculated-score" class="score-chip">+1 分</output></div>
         <div id="task-grid" class="task-grid" role="group" aria-label="任务类型"></div>
+        <label>本环处理方式<select id="entry-resolution"></select></label>
         <div id="quality-fields" class="field-grid quality-fields" hidden>
           <label>要求品质<input id="required-quality" type="number" min="0" inputmode="numeric"></label>
           <label>实际品质<input id="actual-quality" type="number" min="0" inputmode="numeric"></label>
         </div>
-        <label>本环处理方式<select id="entry-resolution"></select></label>
         <label class="cost-field">本环实际成本（万）<input id="entry-cost" type="number" min="0" step="0.1" inputmode="decimal" value="0"></label>
         <div class="decision-block">
           <div><strong>本环方案对比</strong><p class="muted">当前只比较确定的积分与本地成本；公共样本充足前不自动推荐。</p></div>

@@ -6,17 +6,16 @@ func intPtr(value int) *int { return &value }
 
 func TestTaskTypesContainKnownScores(t *testing.T) {
 	want := map[string]int{
-		"find_person":     1,
-		"equipment_60":    2,
-		"furniture_1":     2,
-		"medicine":        2,
-		"cooking":         2,
-		"equipment_70":    3,
-		"instrument":      4,
-		"flower":          4,
-		"equipment_80":    5,
-		"furniture_2":     5,
-		"mutant_specific": 10,
+		"find_person":       1,
+		"equipment_60":      2,
+		"furniture_1":       2,
+		"medicine":          2,
+		"cooking":           2,
+		"equipment_70":      3,
+		"flower_instrument": 4,
+		"equipment_80":      5,
+		"furniture_2":       5,
+		"mutant_specific":   10,
 	}
 
 	got := make(map[string]int)
@@ -74,8 +73,8 @@ func TestQualityResolutionOnlyRequiresInputsWhenBelowRequirement(t *testing.T) {
 }
 
 func TestMutantAlternativeRejectsUnrelatedTask(t *testing.T) {
-	if _, err := ScoreResolution("flower", ResolutionNormalPet, nil, nil); err == nil {
-		t.Fatal("normal pet resolution should be rejected for flower task")
+	if _, err := ScoreResolution("flower_instrument", ResolutionNormalPet, nil, nil); err == nil {
+		t.Fatal("normal pet resolution should be rejected for flower/instrument task")
 	}
 }
 
@@ -116,6 +115,10 @@ func TestScoreTaskQualityCanBecomeNegative(t *testing.T) {
 	}
 	if got != -3 {
 		t.Fatalf("ScoreTask = %d, want -3", got)
+	}
+	got, err = ScoreTask("cooking", intPtr(1000), intPtr(0))
+	if err != nil || got != -498 {
+		t.Fatalf("large quality gap = %d, %v; want -498", got, err)
 	}
 }
 

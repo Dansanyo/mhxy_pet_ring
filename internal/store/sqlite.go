@@ -95,6 +95,12 @@ func (s *SQLiteStore) initialize(ctx context.Context) error {
 		END`); err != nil {
 		return fmt.Errorf("migrate task events: %w", err)
 	}
+	if _, err := s.db.ExecContext(ctx, `
+		UPDATE task_events
+		SET task_type = 'flower_instrument'
+		WHERE task_type IN ('flower', 'instrument')`); err != nil {
+		return fmt.Errorf("merge flower and instrument events: %w", err)
+	}
 	return nil
 }
 
