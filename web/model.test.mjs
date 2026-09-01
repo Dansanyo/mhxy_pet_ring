@@ -145,6 +145,17 @@ test('不足10环时不输出伪精确预测', () => {
   assert.equal(result.method, 'insufficient')
 })
 
+test('10至19环即使公共样本充足也只做均分外推', () => {
+  const result = simulateProjection({
+    currentRing: 15,
+    currentScore: 30,
+    playerLevel: 175,
+    taskBuckets: [{ bucket: 2, taskType: 'mutant_specific', score: 10, count: 1000 }],
+  })
+  assert.equal(result.expectedScore, 200)
+  assert.equal(result.method, 'average')
+})
+
 test('总样本足够但剩余环段覆盖不足时回退到均分外推', () => {
   const result = simulateProjection({
     currentRing: 50,

@@ -22,6 +22,7 @@ export const TASK_RESOLUTIONS = Object.freeze({
 
 export const MIN_SIMULATION_SAMPLES = 200
 export const MIN_PREDICTION_RINGS = 10
+export const MIN_SIMULATION_RINGS = 20
 export const MIN_BUCKET_SAMPLES = 20
 const PRIOR_SAMPLE_WEIGHT = 30
 
@@ -122,6 +123,9 @@ export function simulateProjection(input) {
   const currentRing = clamp(Math.trunc(input.currentRing || 0), 0, 100)
   if (currentRing < MIN_PREDICTION_RINGS) {
     return unavailableProjection(sampleCount)
+  }
+  if (currentRing < MIN_SIMULATION_RINGS) {
+    return { ...fallbackProjection(input), sampleCount }
   }
   if (sampleCount < MIN_SIMULATION_SAMPLES) {
     return { ...fallbackProjection(input), sampleCount }
