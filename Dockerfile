@@ -1,6 +1,10 @@
 FROM golang:1.24-alpine AS builder
 
 WORKDIR /src
+
+ARG GOPROXY=https://goproxy.cn,direct
+ENV GOPROXY=${GOPROXY}
+
 COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd ./cmd
@@ -21,4 +25,3 @@ USER 10001:10001
 EXPOSE 8080
 VOLUME ["/data"]
 ENTRYPOINT ["/usr/local/bin/pet-ring"]
-
