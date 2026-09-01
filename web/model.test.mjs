@@ -7,6 +7,7 @@ import {
   emptyEntryDraft,
   expectedRewardValue,
   fallbackProjection,
+  projectAfterResolution,
   rewardPriceKey,
   resolutionsForTask,
   rewardThreshold,
@@ -118,6 +119,20 @@ test('无公共模型时按当前平均值外推', () => {
     sampleCount: 0,
     method: 'average',
   })
+})
+
+test('不同本环方案分别计算预计最终总分', () => {
+  const input = {
+    currentRing: 49,
+    currentScore: 100,
+    currentCost: 20,
+    playerLevel: 175,
+    taskBuckets: [],
+    prices: {},
+  }
+  assert.equal(projectAfterResolution(input, 10).expectedScore, 220)
+  assert.equal(projectAfterResolution(input, 5).expectedScore, 210)
+  assert.equal(projectAfterResolution(input, -15).expectedScore, 170)
 })
 
 test('公共任务样本不足时仍按当前平均分外推', () => {

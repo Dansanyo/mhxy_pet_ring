@@ -76,6 +76,37 @@ func TestSQLiteStoreRejectsDuplicateEventID(t *testing.T) {
 	}
 }
 
+func TestDeleteTaskEventsOnlyDeletesMatchingDevice(t *testing.T) {
+	db, err := Open(filepath.Join(t.TempDir(), "pet-ring.db"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	ctx := context.Background()
+	for _, event := range []TaskEvent{
+		{EventID: "delete-one", DeviceHash: "aaaaaaaaaaaaaaaa", RingNumber: 1, LevelBand: 175, TaskType: "find_person", Score: 1, CreatedAt: time.Now()},
+		{EventID: "keep-other", DeviceHash: "bbbbbbbbbbbbbbbb", RingNumber: 2, LevelBand: 175, TaskType: "flower", Score: 4, CreatedAt: time.Now()},
+	} {
+		if err := db.InsertTaskEvent(ctx, event); err != nil {
+			t.Fatalf("InsertTaskEvent: %v", err)
+		}
+	}
+	deleted, err := db.DeleteTaskEvents(ctx, "aaaaaaaaaaaaaaaa", []string{"delete-one", "keep-other"})
+	if err != nil {
+		t.Fatalf("DeleteTaskEvents: %v", err)
+	}
+	if deleted != 1 {
+		t.Fatalf("deleted = %d, want 1", deleted)
+	}
+	model, err := db.AggregateModel(ctx)
+	if err != nil {
+		t.Fatalf("AggregateModel: %v", err)
+	}
+	if model.TaskSamples != 1 || model.TaskBuckets[0].TaskType != "flower" {
+		t.Fatalf("model after delete = %+v", model)
+	}
+}
+
 func TestSQLiteStoreRejectsInvalidDatabaseEvent(t *testing.T) {
 	db, err := Open(filepath.Join(t.TempDir(), "pet-ring.db"))
 	if err != nil {

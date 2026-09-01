@@ -68,7 +68,12 @@ export function createRepository(storage, options = {}) {
       return mutate(state => { state.current = { ...state.current, ...patch } })
     },
     resetCurrent() {
-      return mutate(state => { state.current = emptyCycle(now) })
+      return mutate(state => {
+        const eventIDs = new Set(state.current.entries.map(item => item.id))
+        state.pendingEvents = state.pendingEvents.filter(item =>
+          item.kind !== 'task' || !eventIDs.has(item.eventId))
+        state.current = emptyCycle(now)
+      })
     },
     completeCycle(reward) {
       return mutate(state => {

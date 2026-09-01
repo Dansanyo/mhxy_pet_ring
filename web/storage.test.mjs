@@ -78,6 +78,17 @@ test('删除尚未上传的本地记录会同时取消待提交事件', () => {
   assert.equal(repository.load().pendingEvents.length, 0)
 })
 
+test('重置本期会取消本期尚未上传的任务事件并保留删除请求', () => {
+  const repository = createRepository(new MemoryStorage(), { createID: () => 'device-id-123456' })
+  repository.addEntry({ id: 'entry-1', ringNumber: 1, taskType: 'find_person', score: 1, cost: 0 })
+  repository.queueEvent({ kind: 'task', eventId: 'entry-1', body: {} })
+  repository.queueEvent({ kind: 'task_delete', eventId: 'delete-request-1', body: { eventIds: ['entry-1'] } })
+  repository.resetCurrent()
+  const state = repository.load()
+  assert.equal(state.current.entries.length, 0)
+  assert.deepEqual(state.pendingEvents.map(item => item.kind), ['task_delete'])
+})
+
 test('旧版变异选项迁移为任务要求和处理方式', () => {
   const storage = new MemoryStorage()
   const repository = createRepository(storage, { createID: () => 'device-id-123456' })

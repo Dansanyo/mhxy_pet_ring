@@ -146,6 +146,28 @@ func (s *SQLiteStore) InsertTaskEvent(ctx context.Context, event TaskEvent) erro
 	return normalizeInsertError(err)
 }
 
+func (s *SQLiteStore) DeleteTaskEvents(ctx context.Context, deviceHash string, eventIDs []string) (int64, error) {
+	if len(eventIDs) == 0 {
+		return 0, nil
+	}
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(eventIDs)), ",")
+	arguments := make([]any, 0, len(eventIDs)+1)
+	arguments = append(arguments, deviceHash)
+	for _, eventID := range eventIDs {
+		arguments = append(arguments, eventID)
+	}
+	result, err := s.db.ExecContext(ctx,
+		`DELETE FROM task_events WHERE device_hash = ? AND event_id IN (`+placeholders+`)`, arguments...)
+	if err != nil {
+		return 0, fmt.Errorf("delete task events: %w", err)
+	}
+	deleted, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("count deleted task events: %w", err)
+	}
+	return deleted, nil
+}
+
 func (s *SQLiteStore) InsertRewardEvent(ctx context.Context, event RewardEvent) error {
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO reward_events(event_id, device_hash, level_band, final_score, reward_type, reward_level, created_at)

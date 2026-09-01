@@ -52,6 +52,7 @@ func New(eventStore store.EventStore, options Options) http.Handler {
 	mux.HandleFunc("GET /api/v1/health", service.health)
 	mux.HandleFunc("GET /api/v1/model", service.model)
 	mux.HandleFunc("POST /api/v1/events/tasks", service.taskEvent)
+	mux.HandleFunc("DELETE /api/v1/events/tasks", service.deleteTaskEvents)
 	mux.HandleFunc("POST /api/v1/events/rewards", service.rewardEvent)
 	return securityHeaders(mux)
 }
@@ -127,6 +128,40 @@ func (a *api) taskEvent(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 	writeJSON(response, http.StatusAccepted, map[string]any{"accepted": true, "score": score})
+}
+
+type deleteTaskEventsRequest struct {
+	DeviceID string   `json:"deviceId"`
+	EventIDs []string `json:"eventIds"`
+}
+
+func (a *api) deleteTaskEvents(response http.ResponseWriter, request *http.Request) {
+	var input deleteTaskEventsRequest
+	if err := decodeJSON(response, request, &input); err != nil {
+		writeError(response, http.StatusBadRequest, err.Error())
+		return
+	}
+	if len(input.EventIDs) == 0 || len(input.EventIDs) > 100 {
+		writeError(response, http.StatusBadRequest, "event ids must contain between 1 and 100 items")
+		return
+	}
+	for _, eventID := range input.EventIDs {
+		if err := validateIdentity(eventID, input.DeviceID); err != nil {
+			writeError(response, http.StatusBadRequest, err.Error())
+			return
+		}
+	}
+	deviceHash := a.deviceHash(input.DeviceID)
+	if !a.limiter.allow(deviceHash + "|" + clientIP(request)) {
+		writeError(response, http.StatusTooManyRequests, "too many submissions")
+		return
+	}
+	deleted, err := a.store.DeleteTaskEvents(request.Context(), deviceHash, input.EventIDs)
+	if err != nil {
+		writeError(response, http.StatusInternalServerError, "could not delete events")
+		return
+	}
+	writeJSON(response, http.StatusOK, map[string]int64{"deleted": deleted})
 }
 
 type rewardEventRequest struct {

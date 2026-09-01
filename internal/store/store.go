@@ -55,6 +55,7 @@ type Model struct {
 
 type EventStore interface {
 	InsertTaskEvent(context.Context, TaskEvent) error
+	DeleteTaskEvents(context.Context, string, []string) (int64, error)
 	InsertRewardEvent(context.Context, RewardEvent) error
 	AggregateModel(context.Context) (Model, error)
 }

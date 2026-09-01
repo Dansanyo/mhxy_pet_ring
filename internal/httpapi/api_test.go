@@ -120,6 +120,33 @@ func TestDuplicateEventReturnsConflict(t *testing.T) {
 	}
 }
 
+func TestDeleteTaskEventsRequiresMatchingDevice(t *testing.T) {
+	handler, db := testAPI(t, Options{})
+	body := map[string]any{
+		"eventId": "event-task-delete-1", "deviceId": "anonymous-device-00000001",
+		"ringNumber": 1, "playerLevel": 175, "taskType": "find_person",
+	}
+	if response := requestJSON(t, handler, http.MethodPost, "/api/v1/events/tasks", body); response.Code != http.StatusAccepted {
+		t.Fatalf("submit status = %d", response.Code)
+	}
+	wrongDevice := requestJSON(t, handler, http.MethodDelete, "/api/v1/events/tasks", map[string]any{
+		"deviceId": "anonymous-device-00000002", "eventIds": []string{"event-task-delete-1"},
+	})
+	if wrongDevice.Code != http.StatusOK || !strings.Contains(wrongDevice.Body.String(), `"deleted":0`) {
+		t.Fatalf("wrong device response = %d/%s", wrongDevice.Code, wrongDevice.Body.String())
+	}
+	response := requestJSON(t, handler, http.MethodDelete, "/api/v1/events/tasks", map[string]any{
+		"deviceId": "anonymous-device-00000001", "eventIds": []string{"event-task-delete-1"},
+	})
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"deleted":1`) {
+		t.Fatalf("delete response = %d/%s", response.Code, response.Body.String())
+	}
+	model, err := db.AggregateModel(context.Background())
+	if err != nil || model.TaskSamples != 0 {
+		t.Fatalf("model after delete = %+v, err = %v", model, err)
+	}
+}
+
 func TestRewardEventAndPublicModelContainOnlyAggregates(t *testing.T) {
 	handler, _ := testAPI(t, Options{})
 	response := requestJSON(t, handler, http.MethodPost, "/api/v1/events/rewards", map[string]any{

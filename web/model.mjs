@@ -199,6 +199,16 @@ export function simulateProjection(input) {
   }
 }
 
+export function projectAfterResolution(input, score, cost = 0) {
+  if (!Number.isFinite(score)) return null
+  return simulateProjection({
+    ...input,
+    currentRing: Math.min(100, Number(input.currentRing || 0) + 1),
+    currentScore: Number(input.currentScore || 0) + score,
+    currentCost: Number(input.currentCost || 0) + Number(cost || 0),
+  })
+}
+
 function unavailableProjection(sampleCount) {
   return {
     expectedScore: null,

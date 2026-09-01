@@ -1,4 +1,4 @@
-import { TASK_RESOLUTIONS, TASK_RULES, canChooseResolution, emptyEntryDraft, expectedRewardValue, resolutionCostKey, resolutionsForTask, rewardPriceKey, scoreResolution, simulateProjection } from './model.mjs'
+import { TASK_RESOLUTIONS, TASK_RULES, canChooseResolution, emptyEntryDraft, expectedRewardValue, projectAfterResolution, resolutionCostKey, resolutionsForTask, rewardPriceKey, scoreResolution, simulateProjection } from './model.mjs'
 import { createRepository } from './storage.mjs'
 
 const repository = createRepository(localStorage)
@@ -57,7 +57,7 @@ function bindEvents() {
   }))
   $$('.tab').forEach(button => button.addEventListener('click', () => activateTab(button.dataset.tab)))
   $('#add-entry').addEventListener('click', addEntry)
-  $('#undo-entry').addEventListener('click', () => { repository.undoEntry(); refresh('已撤销上一环') })
+  $('#undo-entry').addEventListener('click', undoLastEntry)
   $('#reset-cycle').addEventListener('click', resetCycle)
   $('#complete-cycle').addEventListener('click', () => $('#reward-dialog').showModal())
   $('#reward-type').addEventListener('change', updateRewardLevelVisibility)
@@ -79,7 +79,7 @@ function bindEvents() {
   })
   $('#entry-list').addEventListener('click', event => {
     const button = event.target.closest('[data-delete-entry]')
-    if (button) { repository.deleteEntry(button.dataset.deleteEntry); refresh('已删除该条记录') }
+    if (button) deleteEntry(button.dataset.deleteEntry)
   })
   $('#history-list').addEventListener('click', event => {
     const button = event.target.closest('[data-delete-history]')
@@ -263,9 +263,32 @@ function renderDecisionComparison(totals) {
     const cost = costKey ? Number(state.prices.tasks[costKey] || 0) : 0
     const available = canChooseResolution(option.id, totals.score)
     const scoreCopy = scoreKnown ? `${formatSigned(score)} 分` : '填写品质后计算'
-    const resultCopy = !available ? '当前积分不足 20，无法跳过' : scoreKnown ? `选择后 ${totals.score + score} 分` : '需要要求品质与实际品质'
+    const optionProjection = available && scoreKnown ? projectAfterResolution({
+      currentRing: totals.ring,
+      currentScore: totals.score,
+      currentCost: totals.cost,
+      playerLevel: state.playerLevel,
+      taskBuckets: publicModel.taskBuckets,
+      prices: state.prices.tasks,
+      random: seededRandom(20260901),
+    }, score, cost) : null
+    const resultCopy = !available
+      ? '当前积分不足 20，无法跳过'
+      : !scoreKnown
+        ? '需要要求品质与实际品质'
+        : Number.isFinite(optionProjection?.expectedScore)
+          ? `预计总分 ${optionProjection.expectedScore} 分`
+          : '完成至少 10 环后显示预计总分'
     return `<article class="decision-option${option.id === selectedResolution ? ' is-selected' : ''}${available ? '' : ' is-disabled'}"><strong>${escapeHTML(option.name)}</strong><span>${scoreCopy} · ${formatMoney(cost)}</span><small>${resultCopy}</small></article>`
   }).join('')
+}
+
+function seededRandom(seed) {
+  let value = seed >>> 0
+  return () => {
+    value = (value * 1664525 + 1013904223) >>> 0
+    return value / 4294967296
+  }
 }
 
 function renderEntries() {
@@ -343,10 +366,38 @@ function updateCycleSetup() {
 }
 
 function resetCycle() {
-  if (!confirm('确定清空当前周期吗？本地历史不会受到影响。')) return
+  if (!confirm('确定清空当前周期吗？本期已上传的任务数据也会删除，本地历史不会受到影响。')) return
+  const eventIds = state.current.entries.map(entry => entry.id)
   repository.resetCurrent()
+  queueTaskDeletion(eventIds)
   hydrateInputs()
   refresh('当前周期已重置')
+  flushPendingEvents()
+}
+
+function undoLastEntry() {
+  const removed = repository.undoEntry()
+  if (!removed) return refresh('当前没有可撤销的记录')
+  queueTaskDeletion([removed.id])
+  refresh('已撤销上一环')
+  flushPendingEvents()
+}
+
+function deleteEntry(eventId) {
+  repository.deleteEntry(eventId)
+  queueTaskDeletion([eventId])
+  refresh('已删除该条记录')
+  flushPendingEvents()
+}
+
+function queueTaskDeletion(eventIds) {
+  if (!eventIds.length) return
+  const currentState = repository.load()
+  repository.queueEvent({
+    kind: 'task_delete',
+    eventId: createID(),
+    body: { deviceId: currentState.deviceId, eventIds },
+  })
 }
 
 function completeCycle() {
@@ -393,11 +444,13 @@ async function loadPublicModel() {
 
 async function flushPendingEvents() {
   state = repository.load()
-  if (state.consent !== true || !navigator.onLine) return
+  if (!navigator.onLine) return
   for (const event of [...state.pendingEvents]) {
+    if (event.kind !== 'task_delete' && state.consent !== true) continue
     try {
       const endpoint = event.kind === 'reward' ? '/api/v1/events/rewards' : '/api/v1/events/tasks'
-      const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(event.body) })
+      const method = event.kind === 'task_delete' ? 'DELETE' : 'POST'
+      const response = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(event.body) })
       if (response.ok || response.status === 409) repository.removePendingEvent(event.eventId)
       else if (response.status >= 400 && response.status < 500 && response.status !== 429) repository.removePendingEvent(event.eventId)
     } catch { break }
