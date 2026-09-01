@@ -1,4 +1,4 @@
-import { TASK_RESOLUTIONS, TASK_RULES, emptyEntryDraft, expectedRewardValue, fallbackProjection, resolutionCostKey, resolutionsForTask, rewardPriceKey, scoreResolution, simulateProjection } from './model.mjs'
+import { TASK_RESOLUTIONS, TASK_RULES, canChooseResolution, emptyEntryDraft, expectedRewardValue, fallbackProjection, resolutionCostKey, resolutionsForTask, rewardPriceKey, scoreResolution, simulateProjection } from './model.mjs'
 import { createRepository } from './storage.mjs'
 
 const repository = createRepository(localStorage)
@@ -87,23 +87,28 @@ function renderTaskButtons() {
   renderResolutionOptions()
 }
 
-function renderResolutionOptions() {
+function renderResolutionOptions(totals = currentTotals()) {
   const options = resolutionsForTask(selectedTask)
   if (!options.some(option => option.id === selectedResolution)) selectedResolution = 'fulfilled'
+  if (!canChooseResolution(selectedResolution, totals.score)) selectedResolution = 'fulfilled'
   $('#entry-resolution').innerHTML = options.map(option =>
-    `<option value="${option.id}"${option.id === selectedResolution ? ' selected' : ''}>${option.name}</option>`,
+    `<option value="${option.id}"${option.id === selectedResolution ? ' selected' : ''}${canChooseResolution(option.id, totals.score) ? '' : ' disabled'}>${option.name}${option.id === 'skipped' && totals.score < 20 ? '（需至少20分）' : ''}</option>`,
   ).join('')
-  updateResolutionUI()
+  updateResolutionUI(totals)
 }
 
-function updateResolutionUI() {
+function updateResolutionUI(totals = currentTotals()) {
+  if (!canChooseResolution(selectedResolution, totals.score)) {
+    selectedResolution = 'fulfilled'
+    return renderResolutionOptions(totals)
+  }
   const rule = taskRules.get(selectedTask)
-  $('#quality-fields').hidden = !rule.needsQuality || selectedResolution !== 'fulfilled'
+  $('#quality-fields').hidden = !rule.needsQuality || selectedResolution !== 'quality_below'
   const costKey = resolutionCostKey(selectedTask, selectedResolution)
   $('#entry-cost').value = costKey ? state.prices.tasks[costKey] ?? 0 : 0
   $('#entry-cost').disabled = selectedResolution === 'skipped'
   updateCalculatedScore()
-  renderDecisionComparison(currentTotals())
+  renderDecisionComparison(totals)
 }
 
 function renderPriceInputs() {
@@ -175,14 +180,13 @@ function render() {
   $('#confidence-label').textContent = confidenceText(projection.confidence, projection.sampleCount)
   $('#score-range').textContent = totals.ring ? `预计 ${projection.expectedScore} 分，较可能落在 ${projection.p10Score}–${projection.p90Score} 分` : '完成若干环后开始预测'
   renderTierProbabilities(projection)
-  renderDecisionComparison(totals)
   $('#reward-value-copy').textContent = rewardEstimate.value === null
     ? '奖励概率样本不足，暂不计算期望价值。'
     : `基于 ${rewardEstimate.sampleCount} 条奖励样本，期望奖励价值约 ${formatMoney(rewardEstimate.value)}。`
   renderEntries()
   renderHistory()
   $('#consent-toggle').checked = state.consent === true
-  updateCalculatedScore()
+  renderResolutionOptions(totals)
 }
 
 function renderTierProbabilities(projection) {
@@ -202,12 +206,19 @@ function renderDecisionComparison(totals) {
   const actualQuality = $('#actual-quality').value === '' ? undefined : Number($('#actual-quality').value)
   container.innerHTML = resolutionsForTask(selectedTask).map(option => {
     let score = option.id === 'fulfilled' ? rule.score : option.score
-    if (option.id === 'fulfilled' && rule.needsQuality && requiredQuality !== undefined && actualQuality !== undefined) {
-      try { score = scoreResolution(selectedTask, option.id, requiredQuality, actualQuality) } catch { score = rule.score }
+    let scoreKnown = Number.isFinite(score)
+    if (option.id === 'quality_below' && requiredQuality !== undefined && actualQuality !== undefined) {
+      try {
+        score = scoreResolution(selectedTask, option.id, requiredQuality, actualQuality)
+        scoreKnown = true
+      } catch { scoreKnown = false }
     }
     const costKey = resolutionCostKey(selectedTask, option.id)
     const cost = costKey ? Number(state.prices.tasks[costKey] || 0) : 0
-    return `<article class="decision-option${option.id === selectedResolution ? ' is-selected' : ''}"><strong>${escapeHTML(option.name)}</strong><span>${formatSigned(score)} 分 · ${formatMoney(cost)}</span><small>选择后 ${totals.score + score} 分</small></article>`
+    const available = canChooseResolution(option.id, totals.score)
+    const scoreCopy = scoreKnown ? `${formatSigned(score)} 分` : '填写品质后计算'
+    const resultCopy = !available ? '当前积分不足 20，无法跳过' : scoreKnown ? `选择后 ${totals.score + score} 分` : '需要要求品质与实际品质'
+    return `<article class="decision-option${option.id === selectedResolution ? ' is-selected' : ''}${available ? '' : ' is-disabled'}"><strong>${escapeHTML(option.name)}</strong><span>${scoreCopy} · ${formatMoney(cost)}</span><small>${resultCopy}</small></article>`
   }).join('')
 }
 
@@ -238,8 +249,9 @@ function addEntry() {
   hideError()
   const totals = currentTotals()
   if (totals.ring >= 100) return showError('本周期已满 100 环，请先记录奖励。')
+  if (!canChooseResolution(selectedResolution, totals.score)) return showError('当前积分不足 20，无法跳过本环。')
   const rule = taskRules.get(selectedTask)
-  const needsQuality = rule.needsQuality && selectedResolution === 'fulfilled'
+  const needsQuality = rule.needsQuality && selectedResolution === 'quality_below'
   const requiredQuality = needsQuality ? Number($('#required-quality').value) : undefined
   const actualQuality = needsQuality ? Number($('#actual-quality').value) : undefined
   let score
@@ -263,8 +275,15 @@ function addEntry() {
 function updateCalculatedScore() {
   const rule = taskRules.get(selectedTask)
   let value = selectedResolution === 'fulfilled' ? rule.score : TASK_RESOLUTIONS[selectedResolution].score
-  if (rule.needsQuality && selectedResolution === 'fulfilled' && $('#required-quality').value !== '' && $('#actual-quality').value !== '') {
-    try { value = scoreResolution(selectedTask, selectedResolution, Number($('#required-quality').value), Number($('#actual-quality').value)) } catch { value = rule.score }
+  if (rule.needsQuality && selectedResolution === 'quality_below') {
+    if ($('#required-quality').value === '' || $('#actual-quality').value === '') {
+      $('#calculated-score').textContent = '待填写'
+      return
+    }
+    try { value = scoreResolution(selectedTask, selectedResolution, Number($('#required-quality').value), Number($('#actual-quality').value)) } catch {
+      $('#calculated-score').textContent = '请检查品质'
+      return
+    }
   }
   $('#calculated-score').textContent = `${formatSigned(value)} 分`
 }

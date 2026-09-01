@@ -29,6 +29,7 @@ var taskRules = []TaskRule{
 
 const (
 	ResolutionFulfilled         = "fulfilled"
+	ResolutionQualityBelow      = "quality_below"
 	ResolutionMutantUnspecified = "mutant_unspecified"
 	ResolutionNormalPet         = "normal_pet"
 	ResolutionSkipped           = "skipped"
@@ -72,11 +73,26 @@ func ScoreResolution(taskType, resolution string, requiredQuality, actualQuality
 	if resolution == "" {
 		resolution = ResolutionFulfilled
 	}
-	if _, ok := taskRuleByID[taskType]; !ok {
+	rule, ok := taskRuleByID[taskType]
+	if !ok {
 		return 0, fmt.Errorf("unknown task type %q", taskType)
 	}
 	switch resolution {
 	case ResolutionFulfilled:
+		if rule.NeedsQuality && requiredQuality == nil && actualQuality == nil {
+			return rule.BaseScore, nil
+		}
+		return ScoreTask(taskType, requiredQuality, actualQuality)
+	case ResolutionQualityBelow:
+		if !rule.NeedsQuality {
+			break
+		}
+		if requiredQuality == nil || actualQuality == nil {
+			return 0, errors.New("required and actual quality are required")
+		}
+		if *actualQuality >= *requiredQuality {
+			return 0, errors.New("actual quality must be below required quality")
+		}
 		return ScoreTask(taskType, requiredQuality, actualQuality)
 	case ResolutionSkipped:
 		return -20, nil

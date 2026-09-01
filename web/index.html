@@ -25,6 +25,8 @@
 
   <main>
     <section id="page-current" class="page is-active" aria-labelledby="current-heading">
+      <div class="current-layout">
+        <div class="current-primary">
       <div class="page-heading">
         <div><p class="eyebrow">当前统计</p><h2 id="current-heading"><span id="current-ring">0</span><small>/100 环</small></h2></div>
         <div class="progress-copy"><span id="progress-percent">0%</span><div class="progress"><span id="progress-bar"></span></div></div>
@@ -65,7 +67,9 @@
         <button id="add-entry" type="button" class="button button-primary button-block">计入本环</button>
         <p id="entry-error" class="error" role="alert" hidden></p>
       </section>
+        </div>
 
+        <div class="current-secondary">
       <section class="panel prediction-panel" aria-labelledby="prediction-heading">
         <div class="panel-title"><div><p class="eyebrow">概率预测</p><h3 id="prediction-heading">奖励档位</h3></div><span id="confidence-label" class="confidence">早期估算</span></div>
         <p id="score-range" class="range-copy">完成若干环后开始预测</p>
@@ -82,6 +86,8 @@
         <button id="undo-entry" type="button" class="button">撤销上一环</button>
         <button id="reset-cycle" type="button" class="button button-danger-ghost">重置本期</button>
         <button id="complete-cycle" type="button" class="button button-success" disabled>完成本期</button>
+      </div>
+        </div>
       </div>
     </section>
 

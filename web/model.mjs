@@ -14,6 +14,7 @@ export const TASK_RULES = Object.freeze([
 
 export const TASK_RESOLUTIONS = Object.freeze({
   fulfilled: { id: 'fulfilled', name: '按要求完成' },
+  quality_below: { id: 'quality_below', name: '品质不达标' },
   mutant_unspecified: { id: 'mutant_unspecified', name: '上交非指定变异', score: 5, costKey: 'mutant_unspecified' },
   normal_pet: { id: 'normal_pet', name: '上交非变异', score: -15, costKey: 'normal_pet_as_mutant' },
   skipped: { id: 'skipped', name: '跳过本环', score: -20, costKey: null },
@@ -34,7 +35,10 @@ export function scoreTask(taskType, requiredQuality, actualQuality) {
 }
 
 export function resolutionsForTask(taskType) {
-  const options = [TASK_RESOLUTIONS.fulfilled]
+  const rule = taskByID.get(taskType)
+  const options = rule?.needsQuality
+    ? [{ ...TASK_RESOLUTIONS.fulfilled, name: '品质达标' }, TASK_RESOLUTIONS.quality_below]
+    : [TASK_RESOLUTIONS.fulfilled]
   if (taskType === 'mutant_specific') {
     options.push(TASK_RESOLUTIONS.mutant_unspecified, TASK_RESOLUTIONS.normal_pet)
   }
@@ -45,7 +49,18 @@ export function resolutionsForTask(taskType) {
 export function scoreResolution(taskType, resolution = 'fulfilled', requiredQuality, actualQuality) {
   const option = TASK_RESOLUTIONS[resolution]
   if (!option) throw new Error('未知处理方式')
-  if (resolution === 'fulfilled') return scoreTask(taskType, requiredQuality, actualQuality)
+  if (resolution === 'fulfilled') {
+    const rule = taskByID.get(taskType)
+    if (rule?.needsQuality && requiredQuality === undefined && actualQuality === undefined) return rule.score
+    return scoreTask(taskType, requiredQuality, actualQuality)
+  }
+  if (resolution === 'quality_below') {
+    const rule = taskByID.get(taskType)
+    if (!rule?.needsQuality) throw new Error('该处理方式只适用于品质任务')
+    if (!Number.isFinite(requiredQuality) || !Number.isFinite(actualQuality)) throw new Error('需要填写要求品质和实际品质')
+    if (actualQuality >= requiredQuality) throw new Error('选择品质不达标时，实际品质必须低于要求品质')
+    return scoreTask(taskType, requiredQuality, actualQuality)
+  }
   if (['mutant_unspecified', 'normal_pet'].includes(resolution) && taskType !== 'mutant_specific') {
     throw new Error('该处理方式只适用于指定变异任务')
   }
@@ -53,8 +68,12 @@ export function scoreResolution(taskType, resolution = 'fulfilled', requiredQual
 }
 
 export function resolutionCostKey(taskType, resolution = 'fulfilled') {
-  if (resolution === 'fulfilled') return taskType
+  if (resolution === 'fulfilled' || resolution === 'quality_below') return taskType
   return TASK_RESOLUTIONS[resolution]?.costKey ?? null
+}
+
+export function canChooseResolution(resolution, currentScore) {
+  return resolution !== 'skipped' || Number(currentScore) >= 20
 }
 
 export function rewardThreshold(playerLevel, rewardLevel) {

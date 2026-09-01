@@ -59,6 +59,20 @@ func TestSkipIsAvailableForEveryTask(t *testing.T) {
 	}
 }
 
+func TestQualityResolutionOnlyRequiresInputsWhenBelowRequirement(t *testing.T) {
+	got, err := ScoreResolution("medicine", ResolutionFulfilled, nil, nil)
+	if err != nil || got != 2 {
+		t.Fatalf("fulfilled quality task = %d, %v; want 2", got, err)
+	}
+	got, err = ScoreResolution("medicine", ResolutionQualityBelow, intPtr(63), intPtr(58))
+	if err != nil || got != 0 {
+		t.Fatalf("below-quality task = %d, %v; want 0", got, err)
+	}
+	if _, err := ScoreResolution("medicine", ResolutionQualityBelow, intPtr(63), intPtr(63)); err == nil {
+		t.Fatal("below-quality resolution should reject quality at requirement")
+	}
+}
+
 func TestMutantAlternativeRejectsUnrelatedTask(t *testing.T) {
 	if _, err := ScoreResolution("flower", ResolutionNormalPet, nil, nil); err == nil {
 		t.Fatal("normal pet resolution should be rejected for flower task")

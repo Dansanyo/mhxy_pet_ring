@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import {
   TASK_RULES,
+  canChooseResolution,
   emptyEntryDraft,
   expectedRewardValue,
   fallbackProjection,
@@ -42,6 +43,20 @@ test('指定变异任务提供四种处理方式', () => {
 test('所有任务都可以跳过且不会把替代交付用于其他任务', () => {
   assert.equal(scoreResolution('flower', 'skipped'), -20)
   assert.throws(() => scoreResolution('flower', 'normal_pet'), /只适用于指定变异任务/)
+})
+
+test('当前积分不足20时不能跳过本环', () => {
+  assert.equal(canChooseResolution('skipped', 19), false)
+  assert.equal(canChooseResolution('skipped', 20), true)
+  assert.equal(canChooseResolution('fulfilled', 0), true)
+})
+
+test('品质任务仅在不达标时要求填写品质', () => {
+  assert.deepEqual(resolutionsForTask('medicine').map(item => item.id), ['fulfilled', 'quality_below', 'skipped'])
+  assert.equal(scoreResolution('medicine', 'fulfilled'), 2)
+  assert.equal(scoreResolution('medicine', 'quality_below', 63, 58), 0)
+  assert.throws(() => scoreResolution('medicine', 'quality_below'), /需要填写/)
+  assert.throws(() => scoreResolution('medicine', 'quality_below', 63, 63), /必须低于/)
 })
 
 test('奖励期望值使用公共概率和本地价格', () => {
