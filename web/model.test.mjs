@@ -108,10 +108,25 @@ test('无公共模型时按当前平均值外推', () => {
     p90Score: 183,
     expectedCost: 950.4,
     expectedTier: 110,
-    tierProbabilities: null,
+    tierProbabilities: { 90: 0, 100: 0, 110: 1, 120: 0, 130: 0, 140: 0, 150: 0 },
     confidence: 'low',
     sampleCount: 0,
+    method: 'average',
   })
+})
+
+test('公共任务样本不足时仍按当前平均分外推', () => {
+  const result = simulateProjection({
+    currentRing: 50,
+    currentScore: 120,
+    currentCost: 300,
+    playerLevel: 175,
+    taskBuckets: [{ bucket: 6, taskType: 'find_person', score: 1, count: 129 }],
+  })
+  assert.equal(result.expectedScore, 240)
+  assert.equal(result.sampleCount, 129)
+  assert.equal(result.method, 'average')
+  assert.equal(result.tierProbabilities[150], 1)
 })
 
 test('固定任务分布可以预测剩余积分和本地价格成本', () => {
@@ -120,7 +135,7 @@ test('固定任务分布可以预测剩余积分和本地价格成本', () => {
     currentScore: 180,
     currentCost: 900,
     playerLevel: 175,
-    taskBuckets: [{ bucket: 10, taskType: 'find_person', score: 1, count: 20 }],
+    taskBuckets: [{ bucket: 10, taskType: 'find_person', score: 1, count: 200 }],
     prices: { find_person: 2 },
     runs: 20,
     random: () => 0,
@@ -129,4 +144,24 @@ test('固定任务分布可以预测剩余积分和本地价格成本', () => {
   assert.equal(result.expectedCost, 904)
   assert.equal(result.tierProbabilities[110], 1)
   assert.equal(result.tierProbabilities[120], 0)
+  assert.equal(result.method, 'simulation')
+})
+
+test('模拟奖励档位概率互斥且总和为一', () => {
+  let index = 0
+  const result = simulateProjection({
+    currentRing: 99,
+    currentScore: 202,
+    playerLevel: 175,
+    taskBuckets: [
+      { bucket: 10, taskType: 'find_person', score: 1, count: 100 },
+      { bucket: 10, taskType: 'mutant_specific', score: 10, count: 100 },
+    ],
+    runs: 20,
+    random: () => (index++ % 2 ? 0.75 : 0),
+  })
+  const total = Object.values(result.tierProbabilities).reduce((sum, value) => sum + value, 0)
+  assert.equal(total, 1)
+  assert.equal(result.tierProbabilities[130], 0.5)
+  assert.equal(result.tierProbabilities[140], 0.5)
 })

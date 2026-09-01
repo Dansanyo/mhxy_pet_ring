@@ -214,7 +214,11 @@ function render() {
   $('#complete-cycle').disabled = totals.ring < 100
   $('#add-entry').disabled = totals.ring >= 100
   $('#confidence-label').textContent = confidenceText(projection.confidence, projection.sampleCount)
-  $('#score-range').textContent = totals.ring ? `预计 ${projection.expectedScore} 分，较可能落在 ${projection.p10Score}–${projection.p90Score} 分` : '完成若干环后开始预测'
+  $('#score-range').textContent = !totals.ring
+    ? '完成若干环后开始预测'
+    : projection.method === 'average'
+      ? `按当前平均每环外推，预计 ${projection.expectedScore} 分`
+      : `预计 ${projection.expectedScore} 分，较可能落在 ${projection.p10Score}–${projection.p90Score} 分`
   renderTierProbabilities(projection)
   $('#reward-value-copy').textContent = rewardEstimate.value === null
     ? '奖励概率样本不足，暂不计算期望价值。'
@@ -229,7 +233,7 @@ function renderTierProbabilities(projection) {
   const tiers = [90, 100, 110, 120, 130, 140, 150]
   const ranked = tiers
     .map(tier => ({ tier, probability: projection.tierProbabilities?.[tier] }))
-    .filter(item => Number.isFinite(item.probability))
+    .filter(item => Number.isFinite(item.probability) && item.probability > 0)
     .sort((left, right) => right.probability - left.probability || right.tier - left.tier)
     .slice(0, 3)
   $('#tier-probabilities').innerHTML = ranked.length

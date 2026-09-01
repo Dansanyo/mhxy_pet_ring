@@ -20,6 +20,8 @@ export const TASK_RESOLUTIONS = Object.freeze({
   skipped: { id: 'skipped', name: '跳过本环', score: -20, costKey: null },
 })
 
+export const MIN_SIMULATION_SAMPLES = 200
+
 const taskByID = new Map(TASK_RULES.map(rule => [rule.id, rule]))
 
 export function scoreTask(taskType, requiredQuality, actualQuality) {
@@ -93,23 +95,30 @@ export function fallbackProjection({ currentRing, currentScore, currentCost, pla
   const ring = clamp(Math.trunc(currentRing || 0), 0, 100)
   const expectedScore = ring ? Math.round((currentScore / ring) * 100) : 0
   const expectedCost = ring ? round((currentCost / ring) * 100, 1) : 0
+  const expectedTier = rewardTier(playerLevel, expectedScore)
+  const tierProbabilities = Object.fromEntries(
+    [90, 100, 110, 120, 130, 140, 150].map(tier => [tier, tier === expectedTier ? 1 : 0]),
+  )
   return {
     expectedScore,
     p10Score: expectedScore,
     p50Score: expectedScore,
     p90Score: expectedScore,
     expectedCost,
-    expectedTier: rewardTier(playerLevel, expectedScore),
-    tierProbabilities: null,
+    expectedTier,
+    tierProbabilities,
     confidence: 'low',
     sampleCount: 0,
+    method: 'average',
   }
 }
 
 export function simulateProjection(input) {
   const taskBuckets = Array.isArray(input.taskBuckets) ? input.taskBuckets : []
   const sampleCount = taskBuckets.reduce((sum, row) => sum + positiveCount(row.count), 0)
-  if (!sampleCount) return fallbackProjection(input)
+  if (sampleCount < MIN_SIMULATION_SAMPLES) {
+    return { ...fallbackProjection(input), sampleCount }
+  }
 
   const grouped = new Map()
   for (const row of taskBuckets) {
@@ -145,9 +154,8 @@ export function simulateProjection(input) {
     }
     scores.push(score)
     costTotal += cost
-    for (const tier of Object.keys(tierHits).map(Number)) {
-      if (score >= rewardThreshold(input.playerLevel, tier)) tierHits[tier] += 1
-    }
+    const tier = rewardTier(input.playerLevel, score)
+    if (tierHits[tier] !== undefined) tierHits[tier] += 1
   }
 
   scores.sort((a, b) => a - b)
@@ -165,6 +173,7 @@ export function simulateProjection(input) {
     tierProbabilities,
     confidence: sampleCount >= 1000 ? 'high' : sampleCount >= 200 ? 'medium' : 'low',
     sampleCount,
+    method: 'simulation',
   }
 }
 
