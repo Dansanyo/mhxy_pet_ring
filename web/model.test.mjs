@@ -90,9 +90,14 @@ test('品质任务缺少品质时报错', () => {
 })
 
 test('奖励门槛公式匹配175级表格', () => {
+  assert.equal(rewardThreshold(175, 90), 162)
+  assert.equal(rewardThreshold(175, 100), 172)
   assert.equal(rewardThreshold(175, 150), 222)
-  assert.equal(rewardTier(175, 202), 130)
   assert.equal(rewardTier(175, 161), 0)
+  assert.equal(rewardTier(175, 162), 90)
+  assert.equal(rewardTier(175, 171), 90)
+  assert.equal(rewardTier(175, 172), 100)
+  assert.equal(rewardTier(175, 202), 130)
 })
 
 test('无公共模型时按当前平均值外推', () => {
