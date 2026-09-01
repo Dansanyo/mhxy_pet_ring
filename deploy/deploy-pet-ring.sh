@@ -77,11 +77,6 @@ main() {
 		fail "远端历史不是当前版本的快进更新"
 	fi
 
-	if [[ "$OLD_REVISION" == "$new_revision" ]] && health_check; then
-		log "当前版本已部署且健康：$(git rev-parse --short HEAD)"
-		exit 0
-	fi
-
 	if docker image inspect "$IMAGE" >/dev/null 2>&1; then
 		docker image tag "$IMAGE" "$ROLLBACK_IMAGE"
 	fi
