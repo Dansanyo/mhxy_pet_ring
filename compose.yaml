@@ -1,0 +1,46 @@
+name: pet-ring
+
+services:
+  app:
+    build:
+      context: .
+    image: pet-ring:local
+    container_name: pet-ring
+    restart: unless-stopped
+    init: true
+    environment:
+      PET_RING_ADDR: ":8080"
+      PET_RING_DB: "/data/pet-ring.db"
+      PET_RING_DEVICE_SALT: "${PET_RING_DEVICE_SALT:?PET_RING_DEVICE_SALT must be set}"
+    volumes:
+      - ./data:/data
+    expose:
+      - "8080"
+    networks:
+      - pet-ring-edge
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 100
+    mem_limit: 192m
+    cpus: 0.50
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  pet-ring-edge:
+    name: pet-ring-edge
+

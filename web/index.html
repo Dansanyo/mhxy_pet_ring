@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="梦幻西游宠环积分、成本、奖励与收益预测工具">
+  <meta name="theme-color" content="#f45d22">
+  <title>宠环模拟器</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">环</span>
+      <div><h1>宠环模拟器</h1><p>记成本 · 算积分 · 估奖励</p></div>
+    </div>
+    <span id="model-status" class="model-status">公共模型加载中</span>
+  </header>
+
+  <nav class="tabs" aria-label="主要页面">
+    <button type="button" class="tab is-active" data-tab="current">当前周期</button>
+    <button type="button" class="tab" data-tab="history">历史</button>
+    <button type="button" class="tab" data-tab="settings">设置</button>
+  </nav>
+
+  <main>
+    <section id="page-current" class="page is-active" aria-labelledby="current-heading">
+      <div class="page-heading">
+        <div><p class="eyebrow">当前统计</p><h2 id="current-heading"><span id="current-ring">0</span><small>/100 环</small></h2></div>
+        <div class="progress-copy"><span id="progress-percent">0%</span><div class="progress"><span id="progress-bar"></span></div></div>
+      </div>
+
+      <div class="stat-grid" aria-live="polite">
+        <article class="stat stat-primary"><span>当前积分</span><strong id="current-score">0</strong></article>
+        <article class="stat"><span>当前成本</span><strong id="current-cost">0.0万</strong></article>
+        <article class="stat"><span>平均每环</span><strong id="average-score">—</strong></article>
+        <article class="stat"><span>预计总分</span><strong id="expected-score">—</strong></article>
+        <article class="stat"><span>预计总成本</span><strong id="expected-cost">—</strong></article>
+        <article class="stat"><span>预计净收益</span><strong id="expected-profit">样本不足</strong></article>
+      </div>
+
+      <details class="panel setup-panel">
+        <summary>起始数据与人物等级</summary>
+        <div class="field-grid">
+          <label>人物等级<input id="player-level" type="number" min="1" max="200" inputmode="numeric"></label>
+          <label>已有环数<input id="initial-ring" type="number" min="0" max="99" inputmode="numeric"></label>
+          <label>已有积分<input id="initial-score" type="number" min="-1000" max="2000" inputmode="numeric"></label>
+          <label>已有成本（万）<input id="initial-cost" type="number" min="0" step="0.1" inputmode="decimal"></label>
+        </div>
+      </details>
+
+      <section class="panel record-panel" aria-labelledby="record-heading">
+        <div class="panel-title"><div><p class="eyebrow">记录本环</p><h3 id="record-heading">第 <span id="next-ring">1</span> 环</h3></div><output id="calculated-score" class="score-chip">+1 分</output></div>
+        <div id="task-grid" class="task-grid" role="group" aria-label="任务类型"></div>
+        <div id="quality-fields" class="field-grid quality-fields" hidden>
+          <label>要求品质<input id="required-quality" type="number" min="0" inputmode="numeric"></label>
+          <label>实际品质<input id="actual-quality" type="number" min="0" inputmode="numeric"></label>
+        </div>
+        <label class="cost-field">本环实际成本（万）<input id="entry-cost" type="number" min="0" step="0.1" inputmode="decimal" value="0"></label>
+        <button id="add-entry" type="button" class="button button-primary button-block">计入本环</button>
+        <p id="entry-error" class="error" role="alert" hidden></p>
+      </section>
+
+      <section class="panel prediction-panel" aria-labelledby="prediction-heading">
+        <div class="panel-title"><div><p class="eyebrow">概率预测</p><h3 id="prediction-heading">奖励档位</h3></div><span id="confidence-label" class="confidence">早期估算</span></div>
+        <p id="score-range" class="range-copy">完成若干环后开始预测</p>
+        <div id="tier-probabilities" class="tier-list"></div>
+        <p id="reward-value-copy" class="muted">奖励概率样本不足，暂不计算期望价值。</p>
+      </section>
+
+      <section class="panel entries-panel" aria-labelledby="entries-heading">
+        <div class="panel-title"><h3 id="entries-heading">本周期明细</h3><span id="entry-count" class="muted">0 条</span></div>
+        <div id="entry-list" class="entry-list"><p class="empty">还没有记录，完成一环后从上方添加。</p></div>
+      </section>
+
+      <div class="cycle-actions">
+        <button id="undo-entry" type="button" class="button">撤销上一环</button>
+        <button id="reset-cycle" type="button" class="button button-danger-ghost">重置本期</button>
+        <button id="complete-cycle" type="button" class="button button-success" disabled>完成本期</button>
+      </div>
+    </section>
+
+    <section id="page-history" class="page" aria-labelledby="history-heading">
+      <div class="section-heading"><div><p class="eyebrow">仅保存在本浏览器</p><h2 id="history-heading">历史周期</h2></div><span id="history-count" class="muted">0 期</span></div>
+      <div id="history-list" class="history-list"></div>
+    </section>
+
+    <section id="page-settings" class="page" aria-labelledby="settings-heading">
+      <div class="section-heading"><div><p class="eyebrow">本地配置</p><h2 id="settings-heading">设置</h2></div></div>
+      <section class="panel">
+        <div class="panel-title"><div><h3>匿名统计</h3><p class="muted">用于改善所有玩家的任务和奖励概率</p></div><label class="switch"><input id="consent-toggle" type="checkbox"><span></span></label></div>
+        <button id="show-data-fields" type="button" class="text-button">查看会上传哪些字段</button>
+      </section>
+      <section class="panel">
+        <div class="panel-title"><div><h3>任务参考成本</h3><p class="muted">选择任务时自动带入，可在每环修改；单位为万。</p></div></div>
+        <div id="task-price-grid" class="price-grid"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-title"><div><h3>奖励本地估值</h3><p class="muted">只用于你自己的期望收益计算，不会上传。</p></div></div>
+        <div id="reward-price-grid" class="price-grid"></div>
+      </section>
+      <button id="save-settings" type="button" class="button button-primary button-block">保存设置</button>
+    </section>
+  </main>
+
+  <dialog id="consent-dialog" class="dialog">
+    <form method="dialog">
+      <p class="eyebrow">帮助改善预测</p>
+      <h2>是否上传匿名统计信息？</h2>
+      <p>仅上传环数区间、任务类型、积分、人物等级区间及最终奖励，用于计算概率。</p>
+      <ul><li>不上传角色名或账号</li><li>不上传本地物价与成本</li><li>不上传个人历史列表</li></ul>
+      <div class="dialog-actions">
+        <button id="consent-local" value="local" class="button">仅本地使用</button>
+        <button id="consent-share" value="share" class="button button-primary">同意匿名统计</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="fields-dialog" class="dialog">
+    <form method="dialog">
+      <h2>匿名上传字段</h2>
+      <p>单环：随机设备标识的哈希、环号区间、人物等级区间、任务类型、规则积分、时间。</p>
+      <p>完成周期：人物等级区间、最终积分、奖励类型、奖励等级、时间。</p>
+      <p>服务器只公开聚合数量，不公开单条样本。</p>
+      <button value="close" class="button button-primary button-block">知道了</button>
+    </form>
+  </dialog>
+
+  <dialog id="reward-dialog" class="dialog">
+    <form id="reward-form" method="dialog">
+      <p class="eyebrow">完成第 100 环</p><h2>记录实际奖励</h2>
+      <label>奖励类型<select id="reward-type"><option value="book">制造指南书</option><option value="iron">百炼精铁</option><option value="training_fruit">修炼果</option><option value="training_exp">200点修炼经验</option><option value="furniture_plan">三级家具设计图</option><option value="war_soul">160级战魄</option><option value="other">其他</option></select></label>
+      <label id="reward-level-wrap">奖励等级<select id="reward-level"><option>90</option><option>100</option><option>110</option><option>120</option><option>130</option><option>140</option><option>150</option></select></label>
+      <label>本地估值（万）<input id="reward-value" type="number" min="0" step="0.1" value="0"></label>
+      <div class="dialog-actions"><button value="cancel" class="button">取消</button><button id="save-reward" value="default" class="button button-success">保存并进入下期</button></div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="/app.mjs"></script>
+</body>
+</html>
+

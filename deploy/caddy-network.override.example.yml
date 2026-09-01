@@ -1,0 +1,13 @@
+# 这是现有 /opt/supabase Compose 的示例 override。
+# 使用前先运行 `docker compose config --services`，确认 Caddy 的服务名确实是 caddy。
+services:
+  caddy:
+    networks:
+      - default
+      - pet-ring-edge
+
+networks:
+  pet-ring-edge:
+    external: true
+    name: pet-ring-edge
+

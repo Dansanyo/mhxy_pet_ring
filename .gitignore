@@ -1,0 +1,9 @@
+.env
+/data/
+/work/
+/pet-ring.exe
+/pet-ring
+*.db
+*.db-shm
+*.db-wal
+

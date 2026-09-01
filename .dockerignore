@@ -1,0 +1,9 @@
+.git
+.env
+data
+docs
+outputs
+work
+*.db
+*.exe
+
