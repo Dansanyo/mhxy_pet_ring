@@ -24,10 +24,15 @@ var taskRules = []TaskRule{
 	{ID: "flower", Name: "花", BaseScore: 4},
 	{ID: "equipment_80", Name: "80级装备", BaseScore: 5},
 	{ID: "furniture_2", Name: "2级家具", BaseScore: 5},
-	{ID: "mutant_unspecified", Name: "非指定变异召唤兽", BaseScore: 5},
 	{ID: "mutant_specific", Name: "指定变异召唤兽", BaseScore: 10},
-	{ID: "normal_pet_as_mutant", Name: "上交非变异召唤兽", BaseScore: -15},
 }
+
+const (
+	ResolutionFulfilled         = "fulfilled"
+	ResolutionMutantUnspecified = "mutant_unspecified"
+	ResolutionNormalPet         = "normal_pet"
+	ResolutionSkipped           = "skipped"
+)
 
 var taskRuleByID = func() map[string]TaskRule {
 	rules := make(map[string]TaskRule, len(taskRules))
@@ -61,6 +66,41 @@ func ScoreTask(taskType string, requiredQuality, actualQuality *int) (int, error
 		return rule.BaseScore, nil
 	}
 	return rule.BaseScore - (*requiredQuality-*actualQuality)/2, nil
+}
+
+func ScoreResolution(taskType, resolution string, requiredQuality, actualQuality *int) (int, error) {
+	if resolution == "" {
+		resolution = ResolutionFulfilled
+	}
+	if _, ok := taskRuleByID[taskType]; !ok {
+		return 0, fmt.Errorf("unknown task type %q", taskType)
+	}
+	switch resolution {
+	case ResolutionFulfilled:
+		return ScoreTask(taskType, requiredQuality, actualQuality)
+	case ResolutionSkipped:
+		return -20, nil
+	case ResolutionMutantUnspecified:
+		if taskType == "mutant_specific" {
+			return 5, nil
+		}
+	case ResolutionNormalPet:
+		if taskType == "mutant_specific" {
+			return -15, nil
+		}
+	}
+	return 0, fmt.Errorf("resolution %q is not valid for task %q", resolution, taskType)
+}
+
+func RequestedTaskScore(taskType string, requiredQuality, actualQuality *int) (int, error) {
+	rule, ok := taskRuleByID[taskType]
+	if !ok {
+		return 0, fmt.Errorf("unknown task type %q", taskType)
+	}
+	if !rule.NeedsQuality || requiredQuality == nil || actualQuality == nil {
+		return rule.BaseScore, nil
+	}
+	return ScoreTask(taskType, requiredQuality, actualQuality)
 }
 
 func RewardThreshold(playerLevel, rewardLevel int) int {

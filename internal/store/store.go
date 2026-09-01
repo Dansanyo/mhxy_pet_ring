@@ -9,13 +9,15 @@ import (
 var ErrDuplicate = errors.New("duplicate event")
 
 type TaskEvent struct {
-	EventID    string
-	DeviceHash string
-	RingNumber int
-	LevelBand  int
-	TaskType   string
-	Score      int
-	CreatedAt  time.Time
+	EventID        string
+	DeviceHash     string
+	RingNumber     int
+	LevelBand      int
+	TaskType       string
+	Resolution     string
+	RequestedScore int
+	Score          int
+	CreatedAt      time.Time
 }
 
 type RewardEvent struct {

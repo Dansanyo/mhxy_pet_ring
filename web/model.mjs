@@ -9,10 +9,15 @@ export const TASK_RULES = Object.freeze([
   { id: 'flower', name: '花', score: 4 },
   { id: 'equipment_80', name: '80级装备', score: 5 },
   { id: 'furniture_2', name: '2级家具', score: 5 },
-  { id: 'mutant_unspecified', name: '非指定变异', score: 5 },
   { id: 'mutant_specific', name: '指定变异', score: 10 },
-  { id: 'normal_pet_as_mutant', name: '上交非变异', score: -15 },
 ])
+
+export const TASK_RESOLUTIONS = Object.freeze({
+  fulfilled: { id: 'fulfilled', name: '按要求完成' },
+  mutant_unspecified: { id: 'mutant_unspecified', name: '上交非指定变异', score: 5, costKey: 'mutant_unspecified' },
+  normal_pet: { id: 'normal_pet', name: '上交非变异', score: -15, costKey: 'normal_pet_as_mutant' },
+  skipped: { id: 'skipped', name: '跳过本环', score: -20, costKey: null },
+})
 
 const taskByID = new Map(TASK_RULES.map(rule => [rule.id, rule]))
 
@@ -26,6 +31,30 @@ export function scoreTask(taskType, requiredQuality, actualQuality) {
   if (requiredQuality < 0 || actualQuality < 0) throw new Error('品质不能为负数')
   if (actualQuality >= requiredQuality) return rule.score
   return rule.score - Math.floor((requiredQuality - actualQuality) / 2)
+}
+
+export function resolutionsForTask(taskType) {
+  const options = [TASK_RESOLUTIONS.fulfilled]
+  if (taskType === 'mutant_specific') {
+    options.push(TASK_RESOLUTIONS.mutant_unspecified, TASK_RESOLUTIONS.normal_pet)
+  }
+  options.push(TASK_RESOLUTIONS.skipped)
+  return options
+}
+
+export function scoreResolution(taskType, resolution = 'fulfilled', requiredQuality, actualQuality) {
+  const option = TASK_RESOLUTIONS[resolution]
+  if (!option) throw new Error('未知处理方式')
+  if (resolution === 'fulfilled') return scoreTask(taskType, requiredQuality, actualQuality)
+  if (['mutant_unspecified', 'normal_pet'].includes(resolution) && taskType !== 'mutant_specific') {
+    throw new Error('该处理方式只适用于指定变异任务')
+  }
+  return option.score
+}
+
+export function resolutionCostKey(taskType, resolution = 'fulfilled') {
+  if (resolution === 'fulfilled') return taskType
+  return TASK_RESOLUTIONS[resolution]?.costKey ?? null
 }
 
 export function rewardThreshold(playerLevel, rewardLevel) {

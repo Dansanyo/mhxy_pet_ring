@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -88,5 +89,51 @@ func TestSQLiteStoreRejectsInvalidDatabaseEvent(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("invalid ring should fail")
+	}
+}
+
+func TestSQLiteStoreMigratesLegacyMutantResolution(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "legacy.db")
+	legacy, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("open legacy database: %v", err)
+	}
+	_, err = legacy.Exec(`
+		CREATE TABLE task_events (
+			event_id TEXT PRIMARY KEY,
+			device_hash TEXT NOT NULL,
+			ring_number INTEGER NOT NULL,
+			level_band INTEGER NOT NULL,
+			task_type TEXT NOT NULL,
+			score INTEGER NOT NULL,
+			created_at TEXT NOT NULL
+		);
+		INSERT INTO task_events VALUES (
+			'legacy-mutant', 'aaaaaaaaaaaaaaaa', 20, 175,
+			'normal_pet_as_mutant', -15, '2026-09-01T00:00:00Z'
+		);`)
+	if err != nil {
+		t.Fatalf("create legacy database: %v", err)
+	}
+	if err := legacy.Close(); err != nil {
+		t.Fatalf("close legacy database: %v", err)
+	}
+
+	db, err := Open(path)
+	if err != nil {
+		t.Fatalf("migrate legacy database: %v", err)
+	}
+	defer db.Close()
+
+	var taskType, resolution string
+	var requestedScore, score int
+	err = db.db.QueryRow(`SELECT task_type, resolution, requested_score, score FROM task_events WHERE event_id = 'legacy-mutant'`).Scan(
+		&taskType, &resolution, &requestedScore, &score,
+	)
+	if err != nil {
+		t.Fatalf("read migrated event: %v", err)
+	}
+	if taskType != "mutant_specific" || resolution != "normal_pet" || requestedScore != 10 || score != -15 {
+		t.Fatalf("migrated event = %q/%q/%d/%d", taskType, resolution, requestedScore, score)
 	}
 }

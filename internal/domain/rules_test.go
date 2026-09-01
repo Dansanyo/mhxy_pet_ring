@@ -6,19 +6,17 @@ func intPtr(value int) *int { return &value }
 
 func TestTaskTypesContainKnownScores(t *testing.T) {
 	want := map[string]int{
-		"find_person":          1,
-		"equipment_60":         2,
-		"furniture_1":          2,
-		"medicine":             2,
-		"cooking":              2,
-		"equipment_70":         3,
-		"instrument":           4,
-		"flower":               4,
-		"equipment_80":         5,
-		"furniture_2":          5,
-		"mutant_unspecified":   5,
-		"mutant_specific":      10,
-		"normal_pet_as_mutant": -15,
+		"find_person":     1,
+		"equipment_60":    2,
+		"furniture_1":     2,
+		"medicine":        2,
+		"cooking":         2,
+		"equipment_70":    3,
+		"instrument":      4,
+		"flower":          4,
+		"equipment_80":    5,
+		"furniture_2":     5,
+		"mutant_specific": 10,
 	}
 
 	got := make(map[string]int)
@@ -33,6 +31,37 @@ func TestTaskTypesContainKnownScores(t *testing.T) {
 		if got[id] != score {
 			t.Errorf("task %s score = %d, want %d", id, got[id], score)
 		}
+	}
+}
+
+func TestScoreResolutionSeparatesRequestedTaskFromPlayerAction(t *testing.T) {
+	tests := []struct {
+		resolution string
+		want       int
+	}{
+		{ResolutionFulfilled, 10},
+		{ResolutionMutantUnspecified, 5},
+		{ResolutionNormalPet, -15},
+		{ResolutionSkipped, -20},
+	}
+	for _, tt := range tests {
+		got, err := ScoreResolution("mutant_specific", tt.resolution, nil, nil)
+		if err != nil || got != tt.want {
+			t.Errorf("ScoreResolution(%q) = %d, %v; want %d", tt.resolution, got, err, tt.want)
+		}
+	}
+}
+
+func TestSkipIsAvailableForEveryTask(t *testing.T) {
+	got, err := ScoreResolution("equipment_80", ResolutionSkipped, nil, nil)
+	if err != nil || got != -20 {
+		t.Fatalf("skip score = %d, %v; want -20", got, err)
+	}
+}
+
+func TestMutantAlternativeRejectsUnrelatedTask(t *testing.T) {
+	if _, err := ScoreResolution("flower", ResolutionNormalPet, nil, nil); err == nil {
+		t.Fatal("normal pet resolution should be rejected for flower task")
 	}
 }
 

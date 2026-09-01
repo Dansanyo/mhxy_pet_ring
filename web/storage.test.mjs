@@ -77,3 +77,14 @@ test('删除尚未上传的本地记录会同时取消待提交事件', () => {
   repository.deleteEntry('entry-1')
   assert.equal(repository.load().pendingEvents.length, 0)
 })
+
+test('旧版变异选项迁移为任务要求和处理方式', () => {
+  const storage = new MemoryStorage()
+  const repository = createRepository(storage, { createID: () => 'device-id-123456' })
+  const state = repository.load()
+  state.current.entries.push({ id: 'legacy', ringNumber: 1, taskType: 'normal_pet_as_mutant', score: -15, cost: 3 })
+  repository.save(state)
+  const entry = repository.load().current.entries[0]
+  assert.equal(entry.requestedTaskType, 'mutant_specific')
+  assert.equal(entry.resolution, 'normal_pet')
+})

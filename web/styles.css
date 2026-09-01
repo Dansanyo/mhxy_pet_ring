@@ -60,6 +60,12 @@ input:focus, select:focus, button:focus-visible { outline: 3px solid rgba(239, 9
 .task-option.is-selected span { color: rgba(255,255,255,.82); }
 .quality-fields { grid-template-columns: 1fr 1fr; margin-bottom: 12px; }
 .cost-field { margin-bottom: 12px; }
+.decision-block { margin: 14px 0; padding: 13px; border-radius: 12px; background: var(--surface-warm); }
+.decision-block p { margin: 4px 0 10px; font-size: 12px; }
+.decision-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.decision-option { display: grid; gap: 3px; padding: 10px; border: 1px solid transparent; border-radius: 10px; background: var(--surface); }
+.decision-option.is-selected { border-color: var(--orange); }
+.decision-option span, .decision-option small { color: var(--muted); font-size: 11px; }
 .button { min-height: 44px; padding: 10px 16px; border: 1px solid var(--border); border-radius: 11px; background: #fff; color: var(--text); font-weight: 700; }
 .button:disabled { cursor: not-allowed; opacity: .45; }
 .button-primary { color: #fff; background: var(--orange); border-color: var(--orange); }
@@ -108,6 +114,7 @@ input:focus, select:focus, button:focus-visible { outline: 3px solid rgba(239, 9
   .field-grid { grid-template-columns: 1fr 1fr; }
   .task-grid { grid-template-columns: repeat(3, 1fr); }
   .price-grid { grid-template-columns: 1fr 1fr; }
+  .decision-grid { grid-template-columns: 1fr; }
   .entry-row { grid-template-columns: 48px 1fr 56px auto; }
   .entry-cost-value { display: none; }
   .history-metrics { grid-template-columns: 1fr 1fr; }
@@ -123,4 +130,3 @@ input:focus, select:focus, button:focus-visible { outline: 3px solid rgba(239, 9
   .progress, .tier-track { background: #333638; }
   .dialog { background: #1b1e21; }
 }
-

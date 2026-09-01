@@ -56,7 +56,12 @@
           <label>要求品质<input id="required-quality" type="number" min="0" inputmode="numeric"></label>
           <label>实际品质<input id="actual-quality" type="number" min="0" inputmode="numeric"></label>
         </div>
+        <label>本环处理方式<select id="entry-resolution"></select></label>
         <label class="cost-field">本环实际成本（万）<input id="entry-cost" type="number" min="0" step="0.1" inputmode="decimal" value="0"></label>
+        <div class="decision-block">
+          <div><strong>本环方案对比</strong><p class="muted">当前只比较确定的积分与本地成本；公共样本充足前不自动推荐。</p></div>
+          <div id="decision-comparison" class="decision-grid"></div>
+        </div>
         <button id="add-entry" type="button" class="button button-primary button-block">计入本环</button>
         <p id="entry-error" class="error" role="alert" hidden></p>
       </section>
@@ -107,7 +112,7 @@
     <form method="dialog">
       <p class="eyebrow">帮助改善预测</p>
       <h2>是否上传匿名统计信息？</h2>
-      <p>仅上传环数区间、任务类型、积分、人物等级区间及最终奖励，用于计算概率。</p>
+      <p>仅上传环数区间、系统要求的任务、处理方式、规则积分、人物等级区间及最终奖励，用于计算概率。</p>
       <ul><li>不上传角色名或账号</li><li>不上传本地物价与成本</li><li>不上传个人历史列表</li></ul>
       <div class="dialog-actions">
         <button id="consent-local" value="local" class="button">仅本地使用</button>
@@ -119,7 +124,7 @@
   <dialog id="fields-dialog" class="dialog">
     <form method="dialog">
       <h2>匿名上传字段</h2>
-      <p>单环：随机设备标识的哈希、环号区间、人物等级区间、任务类型、规则积分、时间。</p>
+      <p>单环：随机设备标识的哈希、环号区间、人物等级区间、系统要求的任务、处理方式、规则积分、时间。</p>
       <p>完成周期：人物等级区间、最终积分、奖励类型、奖励等级、时间。</p>
       <p>服务器只公开聚合数量，不公开单条样本。</p>
       <button value="close" class="button button-primary button-block">知道了</button>
@@ -140,4 +145,3 @@
   <script type="module" src="/app.mjs"></script>
 </body>
 </html>
-

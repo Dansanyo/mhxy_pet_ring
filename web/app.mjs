@@ -1,10 +1,11 @@
-import { TASK_RULES, emptyEntryDraft, expectedRewardValue, fallbackProjection, rewardPriceKey, scoreTask, simulateProjection } from './model.mjs'
+import { TASK_RESOLUTIONS, TASK_RULES, emptyEntryDraft, expectedRewardValue, fallbackProjection, resolutionCostKey, resolutionsForTask, rewardPriceKey, scoreResolution, simulateProjection } from './model.mjs'
 import { createRepository } from './storage.mjs'
 
 const repository = createRepository(localStorage)
 let state = repository.load()
 let publicModel = { taskSamples: 0, rewardSamples: 0, taskBuckets: [], rewardBuckets: [], updatedAt: null }
 let selectedTask = 'find_person'
+let selectedResolution = 'fulfilled'
 let toastTimer
 
 const $ = selector => document.querySelector(selector)
@@ -52,6 +53,10 @@ function bindEvents() {
   $('#initial-cost').addEventListener('change', updateCycleSetup)
   $('#required-quality').addEventListener('input', updateCalculatedScore)
   $('#actual-quality').addEventListener('input', updateCalculatedScore)
+  $('#entry-resolution').addEventListener('change', event => {
+    selectedResolution = event.target.value
+    updateResolutionUI()
+  })
   $('#entry-list').addEventListener('click', event => {
     const button = event.target.closest('[data-delete-entry]')
     if (button) { repository.deleteEntry(button.dataset.deleteEntry); refresh('已删除该条记录') }
@@ -71,20 +76,43 @@ function renderTaskButtons() {
     const button = event.target.closest('[data-task]')
     if (!button) return
     selectedTask = button.dataset.task
+    selectedResolution = 'fulfilled'
     $$('.task-option').forEach(item => {
       const active = item.dataset.task === selectedTask
       item.classList.toggle('is-selected', active)
       item.setAttribute('aria-pressed', String(active))
     })
-    const rule = taskRules.get(selectedTask)
-    $('#quality-fields').hidden = !rule.needsQuality
-    $('#entry-cost').value = state.prices.tasks[selectedTask] ?? 0
-    updateCalculatedScore()
+    renderResolutionOptions()
   })
+  renderResolutionOptions()
+}
+
+function renderResolutionOptions() {
+  const options = resolutionsForTask(selectedTask)
+  if (!options.some(option => option.id === selectedResolution)) selectedResolution = 'fulfilled'
+  $('#entry-resolution').innerHTML = options.map(option =>
+    `<option value="${option.id}"${option.id === selectedResolution ? ' selected' : ''}>${option.name}</option>`,
+  ).join('')
+  updateResolutionUI()
+}
+
+function updateResolutionUI() {
+  const rule = taskRules.get(selectedTask)
+  $('#quality-fields').hidden = !rule.needsQuality || selectedResolution !== 'fulfilled'
+  const costKey = resolutionCostKey(selectedTask, selectedResolution)
+  $('#entry-cost').value = costKey ? state.prices.tasks[costKey] ?? 0 : 0
+  $('#entry-cost').disabled = selectedResolution === 'skipped'
+  updateCalculatedScore()
+  renderDecisionComparison(currentTotals())
 }
 
 function renderPriceInputs() {
-  $('#task-price-grid').innerHTML = TASK_RULES.map(rule => `
+  const taskPrices = [
+    ...TASK_RULES,
+    { id: 'mutant_unspecified', name: '非指定变异召唤兽' },
+    { id: 'normal_pet_as_mutant', name: '非变异召唤兽' },
+  ]
+  $('#task-price-grid').innerHTML = taskPrices.map(rule => `
     <label>${rule.name}<input type="number" min="0" step="0.1" inputmode="decimal" data-task-price="${rule.id}"></label>`).join('')
   $('#reward-price-grid').innerHTML = rewardPriceDefinitions.map(item => `
     <label>${item.label}<input type="number" min="0" step="0.1" inputmode="decimal" data-reward-price="${item.key}"></label>`).join('')
@@ -98,7 +126,8 @@ function hydrateInputs() {
   $('#consent-toggle').checked = state.consent === true
   $$('[data-task-price]').forEach(input => { input.value = state.prices.tasks[input.dataset.taskPrice] ?? 0 })
   $$('[data-reward-price]').forEach(input => { input.value = state.prices.rewards[input.dataset.rewardPrice] ?? 0 })
-  $('#entry-cost').value = state.prices.tasks[selectedTask] ?? 0
+  const costKey = resolutionCostKey(selectedTask, selectedResolution)
+  $('#entry-cost').value = costKey ? state.prices.tasks[costKey] ?? 0 : 0
 }
 
 function currentTotals() {
@@ -146,6 +175,7 @@ function render() {
   $('#confidence-label').textContent = confidenceText(projection.confidence, projection.sampleCount)
   $('#score-range').textContent = totals.ring ? `预计 ${projection.expectedScore} 分，较可能落在 ${projection.p10Score}–${projection.p90Score} 分` : '完成若干环后开始预测'
   renderTierProbabilities(projection)
+  renderDecisionComparison(totals)
   $('#reward-value-copy').textContent = rewardEstimate.value === null
     ? '奖励概率样本不足，暂不计算期望价值。'
     : `基于 ${rewardEstimate.sampleCount} 条奖励样本，期望奖励价值约 ${formatMoney(rewardEstimate.value)}。`
@@ -164,6 +194,23 @@ function renderTierProbabilities(projection) {
   }).join('')
 }
 
+function renderDecisionComparison(totals) {
+  const container = $('#decision-comparison')
+  if (!container) return
+  const rule = taskRules.get(selectedTask)
+  const requiredQuality = $('#required-quality').value === '' ? undefined : Number($('#required-quality').value)
+  const actualQuality = $('#actual-quality').value === '' ? undefined : Number($('#actual-quality').value)
+  container.innerHTML = resolutionsForTask(selectedTask).map(option => {
+    let score = option.id === 'fulfilled' ? rule.score : option.score
+    if (option.id === 'fulfilled' && rule.needsQuality && requiredQuality !== undefined && actualQuality !== undefined) {
+      try { score = scoreResolution(selectedTask, option.id, requiredQuality, actualQuality) } catch { score = rule.score }
+    }
+    const costKey = resolutionCostKey(selectedTask, option.id)
+    const cost = costKey ? Number(state.prices.tasks[costKey] || 0) : 0
+    return `<article class="decision-option${option.id === selectedResolution ? ' is-selected' : ''}"><strong>${escapeHTML(option.name)}</strong><span>${formatSigned(score)} 分 · ${formatMoney(cost)}</span><small>选择后 ${totals.score + score} 分</small></article>`
+  }).join('')
+}
+
 function renderEntries() {
   const entries = [...state.current.entries].reverse()
   $('#entry-count').textContent = `${entries.length} 条`
@@ -172,7 +219,7 @@ function renderEntries() {
     return
   }
   $('#entry-list').innerHTML = entries.map(entry => `
-    <div class="entry-row"><strong>${entry.ringNumber} 环</strong><span>${escapeHTML(taskRules.get(entry.taskType)?.name || entry.taskType)}</span><strong>${formatSigned(entry.score)}分</strong><span class="entry-cost-value">${formatMoney(entry.cost)}</span><button class="icon-button" type="button" data-delete-entry="${entry.id}" aria-label="删除第${entry.ringNumber}环">删除</button></div>`).join('')
+    <div class="entry-row"><strong>${entry.ringNumber} 环</strong><span>${escapeHTML(entryLabel(entry))}</span><strong>${formatSigned(entry.score)}分</strong><span class="entry-cost-value">${formatMoney(entry.cost)}</span><button class="icon-button" type="button" data-delete-entry="${entry.id}" aria-label="删除第${entry.ringNumber}环">删除</button></div>`).join('')
 }
 
 function renderHistory() {
@@ -192,17 +239,18 @@ function addEntry() {
   const totals = currentTotals()
   if (totals.ring >= 100) return showError('本周期已满 100 环，请先记录奖励。')
   const rule = taskRules.get(selectedTask)
-  const requiredQuality = rule.needsQuality ? Number($('#required-quality').value) : undefined
-  const actualQuality = rule.needsQuality ? Number($('#actual-quality').value) : undefined
+  const needsQuality = rule.needsQuality && selectedResolution === 'fulfilled'
+  const requiredQuality = needsQuality ? Number($('#required-quality').value) : undefined
+  const actualQuality = needsQuality ? Number($('#actual-quality').value) : undefined
   let score
-  try { score = scoreTask(selectedTask, requiredQuality, actualQuality) } catch (error) { return showError(error.message) }
+  try { score = scoreResolution(selectedTask, selectedResolution, requiredQuality, actualQuality) } catch (error) { return showError(error.message) }
   const cost = Number($('#entry-cost').value)
   if (!Number.isFinite(cost) || cost < 0) return showError('请填写有效的本环成本。')
-  const entry = { id: createID(), ringNumber: totals.ring + 1, taskType: selectedTask, score, cost, requiredQuality, actualQuality, createdAt: new Date().toISOString() }
+  const entry = { id: createID(), ringNumber: totals.ring + 1, requestedTaskType: selectedTask, resolution: selectedResolution, score, cost, requiredQuality, actualQuality, createdAt: new Date().toISOString() }
   repository.addEntry(entry)
   state = repository.load()
   if (state.consent === true) {
-    repository.queueEvent({ kind: 'task', eventId: entry.id, body: { eventId: entry.id, deviceId: state.deviceId, ringNumber: entry.ringNumber, playerLevel: state.playerLevel, taskType: selectedTask, ...(rule.needsQuality ? { requiredQuality, actualQuality } : {}) } })
+    repository.queueEvent({ kind: 'task', eventId: entry.id, body: { eventId: entry.id, deviceId: state.deviceId, ringNumber: entry.ringNumber, playerLevel: state.playerLevel, taskType: selectedTask, resolution: selectedResolution, ...(needsQuality ? { requiredQuality, actualQuality } : {}) } })
   }
   const emptyDraft = emptyEntryDraft()
   $('#required-quality').value = emptyDraft.requiredQuality
@@ -214,9 +262,9 @@ function addEntry() {
 
 function updateCalculatedScore() {
   const rule = taskRules.get(selectedTask)
-  let value = rule.score
-  if (rule.needsQuality && $('#required-quality').value !== '' && $('#actual-quality').value !== '') {
-    try { value = scoreTask(selectedTask, Number($('#required-quality').value), Number($('#actual-quality').value)) } catch { value = rule.score }
+  let value = selectedResolution === 'fulfilled' ? rule.score : TASK_RESOLUTIONS[selectedResolution].score
+  if (rule.needsQuality && selectedResolution === 'fulfilled' && $('#required-quality').value !== '' && $('#actual-quality').value !== '') {
+    try { value = scoreResolution(selectedTask, selectedResolution, Number($('#required-quality').value), Number($('#actual-quality').value)) } catch { value = rule.score }
   }
   $('#calculated-score').textContent = `${formatSigned(value)} 分`
 }
@@ -261,7 +309,8 @@ function saveSettings() {
   const rewards = Object.fromEntries($$('[data-reward-price]').map(input => [input.dataset.rewardPrice, Math.max(0, Number(input.value) || 0)]))
   repository.savePrices({ tasks, rewards })
   state = repository.load()
-  $('#entry-cost').value = state.prices.tasks[selectedTask] ?? 0
+  const costKey = resolutionCostKey(selectedTask, selectedResolution)
+  $('#entry-cost').value = costKey ? state.prices.tasks[costKey] ?? 0 : 0
   refresh('本地物价已保存')
 }
 
@@ -319,4 +368,11 @@ function confidenceText(confidence, count) { return `${confidence === 'high' ? '
 function clampNumber(value, min, max) { return Math.min(max, Math.max(min, Math.trunc(Number(value) || 0))) }
 function createID() { return globalThis.crypto?.randomUUID?.() || `event-${Date.now()}-${Math.random().toString(36).slice(2)}` }
 function rewardLabel(reward = {}) { const names = { book: '制造指南书', iron: '百炼精铁', training_fruit: '修炼果', training_exp: '200点修炼经验', furniture_plan: '三级家具图', war_soul: '160级战魄', other: '其他' }; return `${names[reward.type] || '未记录'}${reward.level ? ` · ${reward.level}级` : ''}` }
+function entryLabel(entry) {
+  const taskType = entry.requestedTaskType || entry.taskType
+  const taskName = taskRules.get(taskType)?.name || taskType
+  const resolution = entry.resolution || 'fulfilled'
+  if (resolution === 'fulfilled') return taskName
+  return `${taskName} · ${TASK_RESOLUTIONS[resolution]?.name || resolution}`
+}
 function escapeHTML(value) { return String(value).replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]) }

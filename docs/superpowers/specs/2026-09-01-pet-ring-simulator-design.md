@@ -13,6 +13,10 @@
 - 应用使用独立容器、数据卷和 Docker 网络。
 - 仅复用现有 `supabase-caddy` 作为 HTTPS 入口，不使用 Supabase 其他组件。
 - 第一版不连接或修改生产服务器，只交付可部署材料。
+- 系统要求的任务与玩家处理方式是两个维度：任务用于统计出现概率，处理方式决定实际积分和成本。
+- `mutant_specific` 支持按要求完成、上交非指定变异、上交非变异和跳过；其他任务支持按要求完成和跳过。
+- 跳过本环固定扣 20 分、成本为零并进入下一环。
+- 公共样本不足时只展示确定性的方案积分和本地成本，不自动声称某个方案最优。
 
 ## 边界
 
@@ -29,3 +33,27 @@
 - 前端网络失败不能阻断本地记账。
 - 生产部署必须独立于现有 Supabase 数据和业务网络。
 
+## 代码骨架
+
+```text
+cmd/pet-ring/          组装 HTTP 服务与嵌入式前端。
+internal/domain/       定义任务、处理方式、积分、门槛与预测规则。
+internal/httpapi/      校验匿名事件，并把请求转换为领域结果。
+internal/store/        持久化任务要求、处理方式、实际积分与聚合模型。
+web/model.mjs          浏览器端领域规则与确定性方案计算。
+web/storage.mjs        本地周期数据及旧版变异记录迁移。
+web/app.mjs            任务录入、处理方式选择和方案对比交互。
+```
+
+依赖始终单向流动：界面依赖浏览器领域模型；HTTP 层依赖 Go 领域规则和存储接口；存储层不反向解释产品规则。数据库同时保存 `requested_score` 和实际 `score`，公共任务分布使用前者，避免玩家跳过或替代交付污染任务概率。
+
+## 数据演进
+
+- 本地旧记录 `mutant_unspecified` 自动迁移为 `requestedTaskType=mutant_specific`、`resolution=mutant_unspecified`。
+- 本地旧记录 `normal_pet_as_mutant` 自动迁移为 `requestedTaskType=mutant_specific`、`resolution=normal_pet`。
+- SQLite 启动时幂等增加 `resolution` 与 `requested_score`，并迁移旧变异记录。
+- 成本仍只保存在浏览器；匿名事件上传任务要求、处理方式和规则积分，不上传价格。
+
+## 变更日志
+
+- 2026-09-01：分离任务要求与玩家处理方式，增加全任务跳过和指定变异四方案确定性对比。

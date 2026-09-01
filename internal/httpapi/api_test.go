@@ -88,6 +88,24 @@ func TestTaskEventRejectsUnknownTask(t *testing.T) {
 	}
 }
 
+func TestSkippedTaskStoresActionScoreWithoutPollutingRequestedTaskScore(t *testing.T) {
+	handler, db := testAPI(t, Options{})
+	response := requestJSON(t, handler, http.MethodPost, "/api/v1/events/tasks", map[string]any{
+		"eventId": "event-task-skip-0001", "deviceId": "anonymous-device-00000001",
+		"ringNumber": 32, "playerLevel": 175, "taskType": "mutant_specific", "resolution": "skipped",
+	})
+	if response.Code != http.StatusAccepted || !strings.Contains(response.Body.String(), `"score":-20`) {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	model, err := db.AggregateModel(context.Background())
+	if err != nil {
+		t.Fatalf("AggregateModel: %v", err)
+	}
+	if got := model.TaskBuckets[0]; got.TaskType != "mutant_specific" || got.Score != 10 {
+		t.Fatalf("aggregate = %+v, want requested mutant task with canonical score", got)
+	}
+}
+
 func TestDuplicateEventReturnsConflict(t *testing.T) {
 	handler, _ := testAPI(t, Options{})
 	body := map[string]any{

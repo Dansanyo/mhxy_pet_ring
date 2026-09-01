@@ -7,8 +7,10 @@ import {
   expectedRewardValue,
   fallbackProjection,
   rewardPriceKey,
+  resolutionsForTask,
   rewardThreshold,
   rewardTier,
+  scoreResolution,
   scoreTask,
   simulateProjection,
 } from './model.mjs'
@@ -21,10 +23,25 @@ test('完成一环后清空品质并将本环成本归零', () => {
   })
 })
 
-test('任务规则包含图片中的全部十三类任务', () => {
-  assert.equal(TASK_RULES.length, 13)
+test('任务规则只包含系统要求，不混入玩家处理方式', () => {
+  assert.equal(TASK_RULES.length, 11)
   assert.equal(TASK_RULES.find(item => item.id === 'mutant_specific').score, 10)
-  assert.equal(TASK_RULES.find(item => item.id === 'normal_pet_as_mutant').score, -15)
+  assert.equal(TASK_RULES.some(item => item.id === 'normal_pet_as_mutant'), false)
+})
+
+test('指定变异任务提供四种处理方式', () => {
+  assert.deepEqual(resolutionsForTask('mutant_specific').map(item => item.id), [
+    'fulfilled', 'mutant_unspecified', 'normal_pet', 'skipped',
+  ])
+  assert.equal(scoreResolution('mutant_specific', 'fulfilled'), 10)
+  assert.equal(scoreResolution('mutant_specific', 'mutant_unspecified'), 5)
+  assert.equal(scoreResolution('mutant_specific', 'normal_pet'), -15)
+  assert.equal(scoreResolution('mutant_specific', 'skipped'), -20)
+})
+
+test('所有任务都可以跳过且不会把替代交付用于其他任务', () => {
+  assert.equal(scoreResolution('flower', 'skipped'), -20)
+  assert.throws(() => scoreResolution('flower', 'normal_pet'), /只适用于指定变异任务/)
 })
 
 test('奖励期望值使用公共概率和本地价格', () => {

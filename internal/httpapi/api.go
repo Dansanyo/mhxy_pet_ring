@@ -75,6 +75,7 @@ type taskEventRequest struct {
 	RingNumber      int    `json:"ringNumber"`
 	PlayerLevel     int    `json:"playerLevel"`
 	TaskType        string `json:"taskType"`
+	Resolution      string `json:"resolution"`
 	RequiredQuality *int   `json:"requiredQuality"`
 	ActualQuality   *int   `json:"actualQuality"`
 }
@@ -93,7 +94,16 @@ func (a *api) taskEvent(response http.ResponseWriter, request *http.Request) {
 		writeError(response, http.StatusBadRequest, "ring number or player level is out of range")
 		return
 	}
-	score, err := domain.ScoreTask(input.TaskType, input.RequiredQuality, input.ActualQuality)
+	resolution := input.Resolution
+	if resolution == "" {
+		resolution = domain.ResolutionFulfilled
+	}
+	score, err := domain.ScoreResolution(input.TaskType, resolution, input.RequiredQuality, input.ActualQuality)
+	if err != nil {
+		writeError(response, http.StatusBadRequest, err.Error())
+		return
+	}
+	requestedScore, err := domain.RequestedTaskScore(input.TaskType, input.RequiredQuality, input.ActualQuality)
 	if err != nil {
 		writeError(response, http.StatusBadRequest, err.Error())
 		return
@@ -106,7 +116,7 @@ func (a *api) taskEvent(response http.ResponseWriter, request *http.Request) {
 	err = a.store.InsertTaskEvent(request.Context(), store.TaskEvent{
 		EventID: input.EventID, DeviceHash: deviceHash, RingNumber: input.RingNumber,
 		LevelBand: playerLevelBand(input.PlayerLevel), TaskType: input.TaskType,
-		Score: score, CreatedAt: a.now().UTC(),
+		Resolution: resolution, RequestedScore: requestedScore, Score: score, CreatedAt: a.now().UTC(),
 	})
 	if errors.Is(err, store.ErrDuplicate) {
 		writeError(response, http.StatusConflict, "event already submitted")

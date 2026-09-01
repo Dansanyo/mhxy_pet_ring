@@ -133,12 +133,41 @@ function normalizeState(state) {
   return {
     ...state,
     consent: state.consent === null ? null : Boolean(state.consent),
-    history: Array.isArray(state.history) ? state.history.slice(0, MAX_HISTORY) : [],
+    current: {
+      ...state.current,
+      entries: state.current.entries.map(normalizeEntry),
+    },
+    history: Array.isArray(state.history) ? state.history.slice(0, MAX_HISTORY).map(item => ({
+      ...item,
+      entries: Array.isArray(item.entries) ? item.entries.map(normalizeEntry) : [],
+    })) : [],
     prices: {
       tasks: state.prices?.tasks || {},
       rewards: state.prices?.rewards || {},
     },
-    pendingEvents: Array.isArray(state.pendingEvents) ? state.pendingEvents : [],
+    pendingEvents: Array.isArray(state.pendingEvents) ? state.pendingEvents.map(normalizePendingEvent) : [],
+  }
+}
+
+function normalizeEntry(entry) {
+  if (entry.requestedTaskType) {
+    return { ...entry, resolution: entry.resolution || 'fulfilled' }
+  }
+  if (entry.taskType === 'mutant_unspecified') {
+    return { ...entry, requestedTaskType: 'mutant_specific', resolution: 'mutant_unspecified' }
+  }
+  if (entry.taskType === 'normal_pet_as_mutant') {
+    return { ...entry, requestedTaskType: 'mutant_specific', resolution: 'normal_pet' }
+  }
+  return { ...entry, requestedTaskType: entry.taskType, resolution: 'fulfilled' }
+}
+
+function normalizePendingEvent(event) {
+  if (event.kind !== 'task' || !event.body || event.body.resolution) return event
+  const entry = normalizeEntry({ taskType: event.body.taskType })
+  return {
+    ...event,
+    body: { ...event.body, taskType: entry.requestedTaskType, resolution: entry.resolution },
   }
 }
 
