@@ -227,11 +227,17 @@ function render() {
 
 function renderTierProbabilities(projection) {
   const tiers = [90, 100, 110, 120, 130, 140, 150]
-  $('#tier-probabilities').innerHTML = tiers.map(tier => {
-    const probability = projection.tierProbabilities?.[tier]
-    const percentage = probability === undefined || probability === null ? null : Math.round(probability * 100)
-    return `<div class="tier-row"><strong>${tier}级</strong><div class="tier-track"><span style="width:${percentage ?? 0}%"></span></div><span>${percentage === null ? '—' : `${percentage}%`}</span></div>`
-  }).join('')
+  const ranked = tiers
+    .map(tier => ({ tier, probability: projection.tierProbabilities?.[tier] }))
+    .filter(item => Number.isFinite(item.probability))
+    .sort((left, right) => right.probability - left.probability || right.tier - left.tier)
+    .slice(0, 3)
+  $('#tier-probabilities').innerHTML = ranked.length
+    ? ranked.map((item, index) => {
+      const percentage = Math.round(item.probability * 100)
+      return `<div class="tier-row"><span class="tier-rank">${index + 1}</span><strong>${item.tier}级</strong><div class="tier-track"><span style="width:${percentage}%"></span></div><span>${percentage}%</span></div>`
+    }).join('')
+    : '<p class="empty">样本充足后显示概率前三档位。</p>'
 }
 
 function renderDecisionComparison(totals) {
@@ -277,7 +283,7 @@ function renderHistory() {
   }
   $('#history-list').innerHTML = state.history.map(item => {
     const profit = Number(item.reward?.value || 0) - Number(item.totalCost || 0)
-    return `<article class="history-card"><div class="history-top"><div><strong>${new Date(item.completedAt).toLocaleDateString('zh-CN')} · ${item.playerLevel}级</strong><p class="muted">${rewardLabel(item.reward)}</p></div><button type="button" class="icon-button" data-delete-history="${item.id}">删除</button></div><div class="history-metrics"><div><span>最终积分</span><strong>${item.finalScore}</strong></div><div><span>总成本</span><strong>${formatMoney(item.totalCost)}</strong></div><div><span>奖励估值</span><strong>${formatMoney(item.reward?.value || 0)}</strong></div><div><span>净收益</span><strong>${formatSignedMoney(profit)}</strong></div></div></article>`
+    return `<article class="history-card"><div class="history-top"><div><strong>${new Date(item.completedAt).toLocaleDateString('zh-CN')} · ${item.playerLevel}级</strong><p class="muted">${rewardLabel(item.reward)}</p></div><button type="button" class="history-delete" data-delete-history="${item.id}" aria-label="删除该历史周期"><span aria-hidden="true">×</span>删除</button></div><div class="history-metrics"><div><span>最终积分</span><strong>${item.finalScore}</strong></div><div><span>总成本</span><strong>${formatMoney(item.totalCost)}</strong></div><div><span>奖励估值</span><strong>${formatMoney(item.reward?.value || 0)}</strong></div><div><span>净收益</span><strong>${formatSignedMoney(profit)}</strong></div></div></article>`
   }).join('')
 }
 

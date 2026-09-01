@@ -95,7 +95,8 @@ input:focus, select:focus, button:focus-visible { outline: 3px solid rgba(239, 9
 .error { margin: 10px 0 0; color: var(--red); font-size: 13px; }
 .range-copy { margin: 14px 0 10px; font-size: 14px; }
 .tier-list { display: grid; gap: 8px; }
-.tier-row { display: grid; grid-template-columns: 55px 1fr 52px; align-items: center; gap: 10px; font-size: 12px; }
+.tier-row { display: grid; grid-template-columns: 22px 48px 1fr 42px; align-items: center; gap: 8px; font-size: 12px; }
+.tier-rank { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; color: var(--orange-dark); background: var(--surface-warm); font-size: 11px; font-weight: 800; }
 .tier-track { height: 8px; border-radius: 999px; overflow: hidden; background: var(--track); }
 .tier-track span { display: block; height: 100%; background: var(--orange); }
 .entry-list, .history-list { display: grid; gap: 8px; }
@@ -110,6 +111,9 @@ input:focus, select:focus, button:focus-visible { outline: 3px solid rgba(239, 9
 .cycle-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .history-card { padding: 16px; border-radius: 15px; border: 1px solid var(--border); background: var(--surface); }
 .history-top { display: flex; justify-content: space-between; gap: 12px; }
+.history-delete { flex: none; height: 34px; display: inline-flex; align-items: center; gap: 5px; padding: 0 10px; border: 1px solid color-mix(in srgb, var(--red) 35%, transparent); border-radius: 9px; color: var(--red); background: color-mix(in srgb, var(--red) 8%, transparent); font-size: 12px; }
+.history-delete:hover { background: color-mix(in srgb, var(--red) 14%, transparent); }
+.history-delete span { font-size: 17px; line-height: 1; }
 .history-metrics { margin-top: 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .history-metrics span { display: block; color: var(--muted); font-size: 11px; }
 .history-metrics strong { display: block; margin-top: 3px; font-size: 15px; }
@@ -129,8 +133,10 @@ input:focus, select:focus, button:focus-visible { outline: 3px solid rgba(239, 9
 .dialog-actions { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 20; padding: 11px 16px; color: #fff; background: #292724; border-radius: 10px; box-shadow: var(--shadow); font-size: 13px; }
 @media (min-width: 901px) {
-  .record-panel { height: 100%; display: flex; flex-direction: column; }
-  #add-entry { margin-top: auto; }
+  .current-primary { height: 100%; max-height: calc(100dvh - 160px); align-self: start; }
+  .record-panel { height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .record-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 5px; }
+  .record-submit { flex: none; margin-top: 12px; }
 }
 @media (max-width: 680px) {
   .app-header { padding: 18px 14px 12px; }
@@ -154,8 +160,8 @@ input:focus, select:focus, button:focus-visible { outline: 3px solid rgba(239, 9
   .current-summary { order: 1; }
   .record-panel { order: 2; }
   .prediction-panel { order: 3; }
-  .entries-panel { order: 4; }
-  .cycle-actions { order: 5; }
+  .cycle-actions { order: 4; }
+  .entries-panel { order: 5; }
 }
 @media (max-width: 390px) {
   .task-grid { grid-template-columns: 1fr 1fr; }
