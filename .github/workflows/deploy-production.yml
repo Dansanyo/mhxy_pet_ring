@@ -1,0 +1,51 @@
+name: Deploy pet-ring to production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pet-ring-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ vars.PET_RING_DEPLOY_ENABLED == 'true' }}
+    name: Deploy ring.ddctl.com
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.PET_RING_DEPLOY_SSH_KEY }}
+          DEPLOY_HOST_KEY: ${{ secrets.PET_RING_DEPLOY_HOST_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$HOME/.ssh/deploy_key"
+          printf 'pet-ring-production %s\n' "$DEPLOY_HOST_KEY" > "$HOME/.ssh/known_hosts"
+
+      - name: Deploy
+        env:
+          DEPLOY_HOST: ${{ secrets.PET_RING_DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.PET_RING_DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.PET_RING_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          ssh \
+            -i "$HOME/.ssh/deploy_key" \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o HostKeyAlias=pet-ring-production \
+            -o ConnectTimeout=15 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=3 \
+            -p "$DEPLOY_PORT" \
+            "$DEPLOY_USER@$DEPLOY_HOST"
