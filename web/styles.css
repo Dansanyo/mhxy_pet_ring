@@ -32,7 +32,7 @@ h1 { margin-bottom: 2px; font-size: 21px; }
 main { max-width: 1200px; margin: 0 auto; padding: 0 20px 64px; }
 .page { display: none; }
 .page.is-active { display: grid; gap: 14px; }
-.current-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(340px, .75fr); align-items: start; gap: 16px; }
+.current-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(340px, .75fr); align-items: stretch; gap: 16px; }
 .current-primary, .current-secondary { display: grid; gap: 14px; min-width: 0; }
 .current-summary { display: grid; gap: 14px; min-width: 0; }
 .current-secondary .setup-panel .field-grid { grid-template-columns: 1fr 1fr; }
@@ -112,6 +112,10 @@ input:focus, select:focus, button:focus-visible { outline: 3px solid rgba(239, 9
 .dialog label { margin: 12px 0; }
 .dialog-actions { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 20; padding: 11px 16px; color: #fff; background: #292724; border-radius: 10px; box-shadow: var(--shadow); font-size: 13px; }
+@media (min-width: 901px) {
+  .record-panel { height: 100%; display: flex; flex-direction: column; }
+  #add-entry { margin-top: auto; }
+}
 @media (max-width: 680px) {
   .app-header { padding: 18px 14px 12px; }
   .model-status { max-width: 120px; }
