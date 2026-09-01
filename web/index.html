@@ -14,7 +14,16 @@
       <span class="brand-mark" aria-hidden="true">环</span>
       <div><h1>宠环模拟器</h1><p>记成本 · 算积分 · 估奖励</p></div>
     </div>
-    <span id="model-status" class="model-status">公共模型加载中</span>
+    <div class="header-actions">
+      <span id="model-status" class="model-status">公共模型加载中</span>
+      <div id="theme-switch" class="theme-switch" role="group" aria-label="界面主题">
+        <button type="button" data-theme-option="light" aria-label="使用浅色主题" title="浅色主题"><span aria-hidden="true">☀</span></button>
+        <button type="button" data-theme-option="system" aria-label="跟随系统主题" title="跟随系统">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="11" rx="2"></rect><path d="M9 20h6M12 16v4"></path></svg>
+        </button>
+        <button type="button" data-theme-option="dark" aria-label="使用深色主题" title="深色主题"><span aria-hidden="true">☾</span></button>
+      </div>
+    </div>
   </header>
 
   <nav class="tabs" aria-label="主要页面">

@@ -2,6 +2,8 @@ import { TASK_RESOLUTIONS, TASK_RULES, canChooseResolution, emptyEntryDraft, exp
 import { createRepository } from './storage.mjs'
 
 const repository = createRepository(localStorage)
+const THEME_KEY = 'pet-ring:theme'
+const THEMES = new Set(['light', 'system', 'dark'])
 let state = repository.load()
 let publicModel = { taskSamples: 0, rewardSamples: 0, taskBuckets: [], rewardBuckets: [], updatedAt: null }
 let selectedTask = 'find_person'
@@ -24,6 +26,7 @@ const rewardPriceDefinitions = [
 initialize()
 
 function initialize() {
+  applyTheme(loadTheme())
   renderTaskButtons()
   renderPriceInputs()
   bindEvents()
@@ -35,6 +38,10 @@ function initialize() {
 }
 
 function bindEvents() {
+  $$('[data-theme-option]').forEach(button => button.addEventListener('click', () => {
+    localStorage.setItem(THEME_KEY, button.dataset.themeOption)
+    applyTheme(button.dataset.themeOption)
+  }))
   $$('.tab').forEach(button => button.addEventListener('click', () => activateTab(button.dataset.tab)))
   $('#add-entry').addEventListener('click', addEntry)
   $('#undo-entry').addEventListener('click', () => { repository.undoEntry(); refresh('已撤销上一环') })
@@ -64,6 +71,21 @@ function bindEvents() {
   $('#history-list').addEventListener('click', event => {
     const button = event.target.closest('[data-delete-history]')
     if (button && confirm('确定删除这期本地历史吗？')) { repository.deleteHistory(button.dataset.deleteHistory); refresh('已删除历史记录') }
+  })
+}
+
+function loadTheme() {
+  const saved = localStorage.getItem(THEME_KEY)
+  return THEMES.has(saved) ? saved : 'system'
+}
+
+function applyTheme(theme) {
+  const selected = THEMES.has(theme) ? theme : 'system'
+  document.documentElement.dataset.theme = selected
+  $$('[data-theme-option]').forEach(button => {
+    const active = button.dataset.themeOption === selected
+    button.classList.toggle('is-active', active)
+    button.setAttribute('aria-pressed', String(active))
   })
 }
 
