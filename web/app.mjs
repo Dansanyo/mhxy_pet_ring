@@ -212,7 +212,9 @@ function render() {
   $('#next-ring').textContent = Math.min(100, totals.ring + 1)
   $('#complete-cycle').disabled = totals.ring < 100
   $('#add-entry').disabled = totals.ring >= 100
-  $('#confidence-label').textContent = confidenceText(projection.confidence, projection.sampleCount)
+  $('#confidence-label').textContent = projection.method === 'simulation'
+    ? confidenceText(projection.confidence, projection.sampleCount)
+    : projection.method === 'average' ? '均分外推' : '等待记录'
   $('#score-range').textContent = projection.method === 'insufficient'
     ? '完成至少 10 环后开始预测'
     : projection.method === 'average'
@@ -230,6 +232,13 @@ function render() {
 }
 
 function renderTierProbabilities(projection) {
+  if (projection.method !== 'simulation') {
+    const tierCopy = projection.method === 'average'
+      ? projection.expectedTier ? `预计 ${projection.expectedTier} 级档位` : '暂未达到 90 级档位'
+      : '完成至少 10 环后开始预测'
+    $('#tier-probabilities').innerHTML = `<p class="empty">${tierCopy}；当前为推算结果，不展示概率。</p>`
+    return
+  }
   const tiers = [90, 100, 110, 120, 130, 140, 150]
   const ranked = tiers
     .map(tier => ({ tier, probability: projection.tierProbabilities?.[tier] }))
