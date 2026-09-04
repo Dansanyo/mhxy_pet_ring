@@ -15,6 +15,7 @@ import {
   scoreResolution,
   scoreTask,
   simulateProjection,
+  taskDistribution,
 } from './model.mjs'
 
 test('完成一环后清空品质并将本环成本归零', () => {
@@ -23,6 +24,28 @@ test('完成一环后清空品质并将本环成本归零', () => {
     actualQuality: '',
     cost: 0,
   })
+})
+
+test('任务分布按已记录环数统计并兼容旧任务字段', () => {
+  const result = taskDistribution([
+    { taskType: 'equipment_60' },
+    { requestedTaskType: 'equipment_70' },
+    { taskType: 'flower' },
+    { taskType: 'instrument' },
+    { taskType: 'normal_pet_as_mutant' },
+  ])
+  assert.equal(result.total, 5)
+  assert.deepEqual(result.items.map(item => [item.id, item.count]), [
+    ['equipment_60', 1],
+    ['equipment_70', 1],
+    ['flower_instrument', 2],
+    ['mutant_specific', 1],
+  ])
+  assert.equal(result.items.find(item => item.id === 'flower_instrument').percentage, 0.4)
+})
+
+test('没有已记录任务时返回空分布', () => {
+  assert.deepEqual(taskDistribution([]), { total: 0, items: [] })
 })
 
 test('任务规则只包含系统要求，不混入玩家处理方式', () => {

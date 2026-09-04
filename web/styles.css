@@ -58,6 +58,15 @@ main { max-width: 1200px; margin: 0 auto; padding: 0 20px 64px; }
 .stat strong { display: block; margin-top: 6px; color: var(--orange-dark); font-size: 21px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .stat-primary { background: var(--surface-warm); border-color: transparent; }
 .panel { padding: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 5px 22px rgba(68, 42, 27, .045); }
+.distribution-note { margin: 10px 0 0; font-size: 12px; }
+.distribution-grid { margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; }
+.distribution-row { min-width: 0; display: grid; grid-template-columns: 28px minmax(70px, 1fr) minmax(60px, 1.3fr) auto auto; align-items: center; gap: 7px; font-size: 12px; }
+.distribution-icon { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 8px; background: var(--surface-warm); font-size: 15px; line-height: 1; }
+.distribution-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.distribution-track { height: 7px; overflow: hidden; border-radius: 999px; background: var(--track); }
+.distribution-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ff8b4f, var(--orange)); }
+.distribution-count, .distribution-percentage { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.distribution-percentage { min-width: 32px; text-align: right; }
 .setup-panel summary { cursor: pointer; color: var(--muted); font-weight: 650; }
 .setup-panel[open] summary { margin-bottom: 14px; }
 .field-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
@@ -117,6 +126,9 @@ input:focus, select:focus, button:focus-visible { outline: 3px solid rgba(239, 9
 .history-metrics { margin-top: 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .history-metrics span { display: block; color: var(--muted); font-size: 11px; }
 .history-metrics strong { display: block; margin-top: 3px; font-size: 15px; }
+.history-distribution { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
+.history-distribution summary { cursor: pointer; color: var(--orange-dark); font-size: 12px; font-weight: 700; }
+.history-distribution .distribution-grid { margin-top: 12px; }
 .price-grid { margin-top: 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .switch { display: inline-flex; }
 .switch input { position: absolute; opacity: 0; pointer-events: none; }
@@ -147,6 +159,7 @@ input:focus, select:focus, button:focus-visible { outline: 3px solid rgba(239, 9
   .task-grid { grid-template-columns: repeat(3, 1fr); }
   .price-grid { grid-template-columns: 1fr 1fr; }
   .decision-grid { grid-template-columns: 1fr; }
+  .distribution-grid { grid-template-columns: 1fr; }
   .entry-row { grid-template-columns: 48px 1fr 56px auto; }
   .entry-cost-value { display: none; }
   .history-metrics { grid-template-columns: 1fr 1fr; }

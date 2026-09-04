@@ -74,6 +74,11 @@
           <article class="stat"><span>预计净收益</span><strong id="expected-profit">样本不足</strong></article>
         </div>
 
+        <section class="panel distribution-panel" aria-labelledby="current-task-heading">
+          <div class="panel-title"><div><p class="eyebrow">本期已记录</p><h3 id="current-task-heading">任务分布</h3></div><span id="current-task-total" class="muted">0 环</span></div>
+          <div id="current-task-distribution"><p class="empty">本期还没有已记录的任务。</p></div>
+        </section>
+
         <details class="panel setup-panel">
           <summary>起始数据与人物等级</summary>
           <div class="field-grid">
@@ -108,6 +113,11 @@
 
     <section id="page-history" class="page" aria-labelledby="history-heading">
       <div class="section-heading"><div><p class="eyebrow">仅保存在本浏览器</p><h2 id="history-heading">历史周期</h2></div><span id="history-count" class="muted">0 期</span></div>
+      <section class="panel distribution-panel" aria-labelledby="history-task-heading">
+        <div class="panel-title"><div><p class="eyebrow">所有已完成周期</p><h3 id="history-task-heading">历史任务分布</h3></div><span id="history-task-total" class="muted">0 期 · 0 环</span></div>
+        <p class="muted distribution-note">按各期已记录的任务环数汇总，点击下方单期卡片可查看该期分布。</p>
+        <div id="history-task-distribution"><p class="empty">完成周期后，这里会汇总历史任务。</p></div>
+      </section>
       <div id="history-list" class="history-list"></div>
     </section>
 

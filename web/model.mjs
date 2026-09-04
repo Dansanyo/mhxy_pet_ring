@@ -264,6 +264,26 @@ export function emptyEntryDraft() {
   return { requiredQuality: '', actualQuality: '', cost: 0 }
 }
 
+export function taskDistribution(entries) {
+  const counts = new Map(TASK_RULES.map(rule => [rule.id, 0]))
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    const taskType = entry.requestedTaskType || entry.taskType
+    const normalizedType = taskType === 'flower' || taskType === 'instrument'
+      ? 'flower_instrument'
+      : taskType === 'mutant_unspecified' || taskType === 'normal_pet_as_mutant'
+        ? 'mutant_specific'
+        : taskType
+    if (counts.has(normalizedType)) counts.set(normalizedType, counts.get(normalizedType) + 1)
+  }
+  const total = [...counts.values()].reduce((sum, count) => sum + count, 0)
+  return {
+    total,
+    items: TASK_RULES
+      .map(rule => ({ id: rule.id, name: rule.name, count: counts.get(rule.id), percentage: total ? counts.get(rule.id) / total : 0 }))
+      .filter(item => item.count > 0),
+  }
+}
+
 function chooseWeighted(rows, random) {
   const total = rows.reduce((sum, row) => sum + positiveWeight(row.count), 0)
   if (!total) return { taskType: 'find_person', score: 1, count: 1 }

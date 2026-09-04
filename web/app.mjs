@@ -1,4 +1,4 @@
-import { TASK_RESOLUTIONS, TASK_RULES, canChooseResolution, emptyEntryDraft, expectedRewardValue, projectAfterResolution, resolutionCostKey, resolutionsForTask, rewardPriceKey, scoreResolution, simulateProjection } from './model.mjs'
+import { TASK_RESOLUTIONS, TASK_RULES, canChooseResolution, emptyEntryDraft, expectedRewardValue, projectAfterResolution, resolutionCostKey, resolutionsForTask, rewardPriceKey, scoreResolution, simulateProjection, taskDistribution } from './model.mjs'
 import { createRepository } from './storage.mjs'
 
 const repository = createRepository(localStorage)
@@ -224,6 +224,7 @@ function render() {
     : `基于 ${rewardEstimate.sampleCount} 条奖励样本，期望奖励价值约 ${formatMoney(rewardEstimate.value)}。`
   renderEntries()
   renderHistory()
+  renderTaskStats()
   $('#consent-toggle').checked = state.consent === true
   renderResolutionOptions(totals)
 }
@@ -309,8 +310,28 @@ function renderHistory() {
   }
   $('#history-list').innerHTML = state.history.map(item => {
     const profit = Number(item.reward?.value || 0) - Number(item.totalCost || 0)
-    return `<article class="history-card"><div class="history-top"><div><strong>${new Date(item.completedAt).toLocaleDateString('zh-CN')} · ${item.playerLevel}级</strong><p class="muted">${rewardLabel(item.reward)}</p></div><button type="button" class="history-delete" data-delete-history="${item.id}" aria-label="删除该历史周期"><span aria-hidden="true">×</span>删除</button></div><div class="history-metrics"><div><span>最终积分</span><strong>${item.finalScore}</strong></div><div><span>总成本</span><strong>${formatMoney(item.totalCost)}</strong></div><div><span>奖励估值</span><strong>${formatMoney(item.reward?.value || 0)}</strong></div><div><span>净收益</span><strong>${formatSignedMoney(profit)}</strong></div></div></article>`
+    const distribution = taskDistribution(item.entries)
+    return `<article class="history-card"><div class="history-top"><div><strong>${new Date(item.completedAt).toLocaleDateString('zh-CN')} · ${item.playerLevel}级</strong><p class="muted">${rewardLabel(item.reward)}</p></div><button type="button" class="history-delete" data-delete-history="${item.id}" aria-label="删除该历史周期"><span aria-hidden="true">×</span>删除</button></div><div class="history-metrics"><div><span>最终积分</span><strong>${item.finalScore}</strong></div><div><span>总成本</span><strong>${formatMoney(item.totalCost)}</strong></div><div><span>奖励估值</span><strong>${formatMoney(item.reward?.value || 0)}</strong></div><div><span>净收益</span><strong>${formatSignedMoney(profit)}</strong></div></div><details class="history-distribution"><summary>任务分布 · ${distribution.total} 环</summary>${distributionMarkup(distribution)}</details></article>`
   }).join('')
+}
+
+function renderTaskStats() {
+  const currentDistribution = taskDistribution(state.current.entries)
+  $('#current-task-total').textContent = `${currentDistribution.total} 环`
+  $('#current-task-distribution').innerHTML = distributionMarkup(currentDistribution, '本期还没有已记录的任务。')
+
+  const historyEntries = state.history.flatMap(item => item.entries || [])
+  const historyDistribution = taskDistribution(historyEntries)
+  $('#history-task-total').textContent = `${state.history.length} 期 · ${historyDistribution.total} 环`
+  $('#history-task-distribution').innerHTML = distributionMarkup(historyDistribution, '完成周期后，这里会汇总历史任务。')
+}
+
+function distributionMarkup(distribution, emptyCopy = '还没有已记录的任务。') {
+  if (!distribution.total) return `<p class="empty">${emptyCopy}</p>`
+  return `<div class="distribution-grid">${distribution.items.map(item => {
+    const percentage = Math.min(100, Math.max(0, item.percentage * 100))
+    return `<div class="distribution-row"><span class="distribution-icon" aria-hidden="true">${taskIcons[item.id] || '📦'}</span><strong>${escapeHTML(item.name)}</strong><div class="distribution-track"><span style="width:${percentage}%"></span></div><span class="distribution-count">${item.count} 次</span><span class="distribution-percentage">${formatDistributionPercentage(item.percentage)}</span></div>`
+  }).join('')}</div>`
 }
 
 function addEntry() {
@@ -481,6 +502,7 @@ function hideError() { $('#entry-error').hidden = true }
 function formatMoney(value) { return `${Number(value || 0).toFixed(1)}万` }
 function formatSigned(value) { return `${value >= 0 ? '+' : ''}${value}` }
 function formatSignedMoney(value) { return `${value >= 0 ? '+' : ''}${Number(value || 0).toFixed(1)}万` }
+function formatDistributionPercentage(value) { const percentage = value * 100; return percentage > 0 && percentage < 1 ? '&lt;1%' : `${Math.round(percentage)}%` }
 function confidenceText(confidence, count) { return `${confidence === 'high' ? '高' : confidence === 'medium' ? '中' : '低'}可信度 · ${count || 0} 样本` }
 function clampNumber(value, min, max) { return Math.min(max, Math.max(min, Math.trunc(Number(value) || 0))) }
 function createID() { return globalThis.crypto?.randomUUID?.() || `event-${Date.now()}-${Math.random().toString(36).slice(2)}` }
